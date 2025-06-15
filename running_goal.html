@@ -429,11 +429,34 @@
               font-size: 2em;
           }
       }
+
+      .signature {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          color: rgba(255, 255, 255, 0.4);
+          font-family: 'Orbitron', sans-serif;
+          font-size: 0.63em;
+          letter-spacing: 1px;
+          text-shadow: 0 0 10px rgba(0, 180, 216, 0.3);
+          z-index: 2;
+          animation: signatureGlow 3s ease-in-out infinite alternate;
+      }
+
+      @keyframes signatureGlow {
+          0% {
+              opacity: 0.4;
+              text-shadow: 0 0 10px rgba(0, 180, 216, 0.3);
+          }
+          100% {
+              opacity: 0.6;
+              text-shadow: 0 0 15px rgba(0, 180, 216, 0.5);
+          }
+      }
   </style>
 </head>
 <body>
 <div class="stars">
-  <div class="star"></div>
   <div class="star"></div>
   <div class="star"></div>
   <div class="star"></div>
@@ -555,6 +578,7 @@
     <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="weeklyDetails"></div>
   </div>
 </div>
+<div class="signature">chipset508 vibe coding 6/2025</div>
 
 <script>
 	function calculateProgress() {
