@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Running Progress Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
       * {
           margin: 0;
@@ -12,31 +13,236 @@
       }
 
       body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          font-family: 'Orbitron', 'Segoe UI', sans-serif;
+          background: linear-gradient(135deg, #010305 0%, #030712 50%, #050a14 100%);
           min-height: 100vh;
           padding: 20px;
+          color: #e0e0e0;
+          position: relative;
+          overflow-x: hidden;
       }
+
+      body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background:
+                  radial-gradient(circle at 20% 80%, rgba(0, 180, 216, 0.03) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 20%, rgba(0, 119, 182, 0.03) 0%, transparent 50%),
+                  radial-gradient(circle at 50% 50%, rgba(0, 180, 216, 0.02) 0%, transparent 70%);
+          z-index: -2;
+          animation: backgroundPulse 20s ease-in-out infinite alternate;
+      }
+
+      @keyframes backgroundPulse {
+          0% {
+              opacity: 0.3;
+              transform: scale(1);
+          }
+          50% {
+              opacity: 0.5;
+              transform: scale(1.05);
+          }
+          100% {
+              opacity: 0.3;
+              transform: scale(1);
+          }
+      }
+
+      .stars {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: -1;
+          pointer-events: none;
+          perspective: 1000px;
+          transform-style: preserve-3d;
+      }
+
+      .star {
+          position: absolute;
+          width: var(--size, 2px);
+          height: var(--size, 2px);
+          background: #fff;
+          border-radius: 50%;
+          animation: starTravel var(--duration) linear infinite;
+          opacity: var(--opacity, 0.6);
+      }
+
+      @keyframes starTravel {
+          0% {
+              transform: translateZ(-100px);
+              opacity: 0;
+          }
+          20% {
+              opacity: var(--opacity, 0.6);
+          }
+          80% {
+              opacity: var(--opacity, 0.6);
+          }
+          100% {
+              transform: translateZ(200px);
+              opacity: 0;
+          }
+      }
+
+      .star:nth-child(1) { left: 7%; top: 23%; --duration: 22s; --opacity: 0.7; --size: 1.5px; }
+      .star:nth-child(2) { left: 23%; top: 47%; --duration: 25s; --opacity: 0.6; --size: 2.8px; }
+      .star:nth-child(3) { left: 37%; top: 82%; --duration: 28s; --opacity: 0.7; --size: 1.2px; }
+      .star:nth-child(4) { left: 43%; top: 13%; --duration: 23s; --opacity: 0.6; --size: 2.5px; }
+      .star:nth-child(5) { left: 52%; top: 34%; --duration: 27s; --opacity: 0.7; --size: 1.8px; }
+      .star:nth-child(6) { left: 63%; top: 71%; --duration: 24s; --opacity: 0.6; --size: 2.2px; }
+      .star:nth-child(7) { left: 74%; top: 42%; --duration: 26s; --opacity: 0.7; --size: 1.4px; }
+      .star:nth-child(8) { left: 83%; top: 87%; --duration: 28s; --opacity: 0.6; --size: 2.7px; }
+      .star:nth-child(9) { left: 92%; top: 58%; --duration: 25s; --opacity: 0.7; --size: 1.6px; }
+      .star:nth-child(10) { left: 17%; top: 81%; --duration: 27s; --opacity: 0.6; --size: 2.3px; }
+      .star:nth-child(11) { left: 28%; top: 19%; --duration: 23s; --opacity: 0.7; --size: 1.3px; }
+      .star:nth-child(12) { left: 39%; top: 49%; --duration: 25s; --opacity: 0.6; --size: 2.6px; }
+      .star:nth-child(13) { left: 47%; top: 73%; --duration: 28s; --opacity: 0.7; --size: 1.7px; }
+      .star:nth-child(14) { left: 58%; top: 27%; --duration: 24s; --opacity: 0.6; --size: 2.4px; }
+      .star:nth-child(15) { left: 67%; top: 59%; --duration: 26s; --opacity: 0.7; --size: 1.5px; }
+      .star:nth-child(16) { left: 78%; top: 39%; --duration: 23s; --opacity: 0.6; --size: 2.8px; }
+      .star:nth-child(17) { left: 87%; top: 63%; --duration: 27s; --opacity: 0.7; --size: 1.2px; }
+      .star:nth-child(18) { left: 93%; top: 91%; --duration: 28s; --opacity: 0.6; --size: 2.5px; }
+      .star:nth-child(19) { left: 6%; top: 7%; --duration: 25s; --opacity: 0.7; --size: 1.8px; }
+      .star:nth-child(20) { left: 49%; top: 83%; --duration: 27s; --opacity: 0.6; --size: 2.2px; }
+      .star:nth-child(21) { left: 57%; top: 17%; --duration: 23s; --opacity: 0.7; --size: 1.4px; }
+      .star:nth-child(22) { left: 69%; top: 41%; --duration: 25s; --opacity: 0.6; --size: 2.7px; }
+      .star:nth-child(23) { left: 77%; top: 79%; --duration: 28s; --opacity: 0.7; --size: 1.6px; }
+      .star:nth-child(24) { left: 89%; top: 29%; --duration: 24s; --opacity: 0.6; --size: 2.3px; }
+      .star:nth-child(25) { left: 96%; top: 51%; --duration: 26s; --opacity: 0.7; --size: 1.3px; }
+      .star:nth-child(26) { left: 14%; top: 37%; --duration: 23s; --opacity: 0.6; --size: 2.6px; }
+      .star:nth-child(27) { left: 31%; top: 64%; --duration: 26s; --opacity: 0.7; --size: 1.7px; }
+      .star:nth-child(28) { left: 45%; top: 89%; --duration: 28s; --opacity: 0.6; --size: 2.4px; }
+      .star:nth-child(29) { left: 61%; top: 21%; --duration: 25s; --opacity: 0.7; --size: 1.5px; }
+      .star:nth-child(30) { left: 75%; top: 48%; --duration: 27s; --opacity: 0.6; --size: 2.8px; }
+      .star:nth-child(31) { left: 91%; top: 76%; --duration: 23s; --opacity: 0.7; --size: 1.2px; }
+      .star:nth-child(32) { left: 18%; top: 93%; --duration: 25s; --opacity: 0.6; --size: 2.5px; }
+      .star:nth-child(33) { left: 35%; top: 25%; --duration: 28s; --opacity: 0.7; --size: 1.8px; }
+      .star:nth-child(34) { left: 51%; top: 56%; --duration: 24s; --opacity: 0.6; --size: 2.2px; }
+      .star:nth-child(35) { left: 68%; top: 88%; --duration: 26s; --opacity: 0.7; --size: 1.4px; }
+      .star:nth-child(36) { left: 84%; top: 15%; --duration: 23s; --opacity: 0.6; --size: 2.7px; }
+      .star:nth-child(37) { left: 9%; top: 45%; --duration: 25s; --opacity: 0.7; --size: 1.6px; }
+      .star:nth-child(38) { left: 27%; top: 69%; --duration: 28s; --opacity: 0.6; --size: 2.3px; }
+      .star:nth-child(39) { left: 48%; top: 11%; --duration: 24s; --opacity: 0.7; --size: 1.3px; }
+      .star:nth-child(40) { left: 65%; top: 33%; --duration: 26s; --opacity: 0.6; --size: 2.6px; }
+      .star:nth-child(41) { left: 81%; top: 67%; --duration: 23s; --opacity: 0.7; --size: 1.7px; }
+      .star:nth-child(42) { left: 94%; top: 84%; --duration: 25s; --opacity: 0.6; --size: 2.4px; }
+      .star:nth-child(43) { left: 21%; top: 31%; --duration: 28s; --opacity: 0.7; --size: 1.5px; }
+      .star:nth-child(44) { left: 38%; top: 61%; --duration: 24s; --opacity: 0.6; --size: 2.8px; }
+      .star:nth-child(45) { left: 55%; top: 86%; --duration: 26s; --opacity: 0.7; --size: 1.2px; }
+      .star:nth-child(46) { left: 71%; top: 18%; --duration: 23s; --opacity: 0.6; --size: 2.5px; }
+      .star:nth-child(47) { left: 88%; top: 52%; --duration: 25s; --opacity: 0.7; --size: 1.8px; }
+      .star:nth-child(48) { left: 6%; top: 78%; --duration: 28s; --opacity: 0.6; --size: 2.2px; }
+      .star:nth-child(49) { left: 24%; top: 8%; --duration: 24s; --opacity: 0.7; --size: 1.4px; }
+      .star:nth-child(50) { left: 41%; top: 38%; --duration: 26s; --opacity: 0.6; --size: 2.7px; }
+      .star:nth-child(51) { left: 58%; top: 65%; --duration: 23s; --opacity: 0.7; --size: 1.6px; }
+      .star:nth-child(52) { left: 75%; top: 94%; --duration: 25s; --opacity: 0.6; --size: 2.3px; }
+      .star:nth-child(53) { left: 91%; top: 24%; --duration: 28s; --opacity: 0.7; --size: 1.3px; }
+      .star:nth-child(54) { left: 17%; top: 54%; --duration: 24s; --opacity: 0.6; --size: 2.6px; }
+      .star:nth-child(55) { left: 34%; top: 85%; --duration: 26s; --opacity: 0.7; --size: 1.7px; }
+      .star:nth-child(56) { left: 51%; top: 14%; --duration: 23s; --opacity: 0.6; --size: 2.4px; }
+      .star:nth-child(57) { left: 67%; top: 44%; --duration: 25s; --opacity: 0.7; --size: 1.5px; }
+      .star:nth-child(58) { left: 84%; top: 74%; --duration: 28s; --opacity: 0.6; --size: 2.8px; }
+      .star:nth-child(59) { left: 10%; top: 9%; --duration: 24s; --opacity: 0.7; --size: 1.2px; }
+      .star:nth-child(60) { left: 27%; top: 39%; --duration: 26s; --opacity: 0.6; --size: 2.5px; }
+      .star:nth-child(61) { left: 44%; top: 71%; --duration: 23s; --opacity: 0.7; --size: 1.8px; }
+      .star:nth-child(62) { left: 61%; top: 97%; --duration: 25s; --opacity: 0.6; --size: 2.2px; }
+      .star:nth-child(63) { left: 77%; top: 27%; --duration: 28s; --opacity: 0.7; --size: 1.4px; }
+      .star:nth-child(64) { left: 94%; top: 57%; --duration: 24s; --opacity: 0.6; --size: 2.7px; }
+      .star:nth-child(65) { left: 20%; top: 87%; --duration: 26s; --opacity: 0.7; --size: 1.6px; }
+      .star:nth-child(66) { left: 37%; top: 16%; --duration: 23s; --opacity: 0.6; --size: 2.3px; }
+      .star:nth-child(67) { left: 54%; top: 46%; --duration: 25s; --opacity: 0.7; --size: 1.3px; }
+      .star:nth-child(68) { left: 70%; top: 77%; --duration: 28s; --opacity: 0.6; --size: 2.6px; }
+      .star:nth-child(69) { left: 87%; top: 7%; --duration: 24s; --opacity: 0.7; --size: 1.7px; }
+      .star:nth-child(70) { left: 14%; top: 37%; --duration: 26s; --opacity: 0.6; --size: 2.4px; }
+      .star:nth-child(71) { left: 30%; top: 67%; --duration: 23s; --opacity: 0.7; --size: 1.5px; }
+      .star:nth-child(72) { left: 47%; top: 97%; --duration: 25s; --opacity: 0.6; --size: 2.8px; }
+      .star:nth-child(73) { left: 64%; top: 29%; --duration: 28s; --opacity: 0.7; --size: 1.2px; }
+      .star:nth-child(74) { left: 80%; top: 59%; --duration: 24s; --opacity: 0.6; --size: 2.5px; }
+      .star:nth-child(75) { left: 97%; top: 87%; --duration: 26s; --opacity: 0.7; --size: 1.8px; }
 
       .container {
           max-width: 800px;
-          margin: 0 auto;
-          background: rgba(255, 255, 255, 0.95);
+          width: 90%;
+          background: rgba(3, 7, 18, 0.95);
+          border: 1px solid rgba(0, 180, 216, 0.15);
           border-radius: 20px;
           padding: 30px;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+          box-shadow:
+                  0 20px 40px rgba(0, 0, 0, 0.4),
+                  0 0 20px rgba(0, 180, 216, 0.03);
           backdrop-filter: blur(10px);
+          position: fixed;
+          top: 35%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          transform-style: preserve-3d;
+          perspective: 1000px;
+          z-index: 1;
+      }
+
+      .container::before {
+          content: '';
+          position: absolute;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+          bottom: -1px;
+          background: linear-gradient(45deg,
+          rgba(0, 180, 216, 0.08),
+          rgba(0, 119, 182, 0.08),
+          rgba(0, 180, 216, 0.08));
+          border-radius: 20px;
+          z-index: -1;
+          animation: borderGlow 3s linear infinite;
+      }
+
+      .container::after {
+          content: '';
+          position: absolute;
+          top: -20px;
+          left: -20px;
+          right: -20px;
+          bottom: -20px;
+          background: radial-gradient(circle at 50% 50%,
+          rgba(0, 180, 216, 0.1) 0%,
+          transparent 70%);
+          z-index: -2;
+          animation: containerGlow 10s ease-in-out infinite;
+          border-radius: 30px;
+          filter: blur(10px);
+      }
+
+      @keyframes containerGlow {
+          0%, 100% {
+              opacity: 0.3;
+              transform: scale(1);
+          }
+          50% {
+              opacity: 0.5;
+              transform: scale(1.02);
+          }
+      }
+
+      @keyframes borderGlow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
       }
 
       h1 {
           text-align: center;
-          color: #333;
+          color: #fff;
           margin-bottom: 30px;
           font-size: 2.5em;
-          background: linear-gradient(45deg, #667eea, #764ba2);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          font-weight: 600;
+          letter-spacing: 1px;
       }
 
       .input-section {
@@ -54,24 +260,30 @@
       label {
           font-weight: 600;
           margin-bottom: 8px;
-          color: #555;
+          color: #ccc;
           font-size: 1.1em;
       }
 
       input {
           padding: 15px;
-          border: 2px solid #e0e0e0;
+          border: 2px solid #666;
           border-radius: 10px;
           font-size: 1.1em;
           transition: all 0.3s ease;
-          background: rgba(255, 255, 255, 0.8);
+          background: rgba(60, 60, 60, 0.8);
+          color: #fff;
+          font-family: 'Orbitron', sans-serif;
       }
 
       input:focus {
           outline: none;
-          border-color: #667eea;
-          box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+          border-color: #888;
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
           transform: translateY(-2px);
+      }
+
+      input::placeholder {
+          color: rgba(255, 255, 255, 0.5);
       }
 
       .stats-grid {
@@ -82,29 +294,33 @@
       }
 
       .stat-card {
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          color: white;
+          background: linear-gradient(135deg, rgba(80, 80, 80, 0.8), rgba(60, 60, 60, 0.8));
+          color: #fff;
           padding: 20px;
+          border: 1px solid #777;
           border-radius: 15px;
           text-align: center;
-          box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
           transform: translateY(0);
           transition: transform 0.3s ease;
       }
 
       .stat-card:hover {
           transform: translateY(-5px);
+          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
       }
 
       .stat-value {
           font-size: 2em;
           font-weight: bold;
           margin-bottom: 5px;
+          font-family: 'Orbitron', sans-serif;
       }
 
       .stat-label {
           font-size: 0.9em;
-          opacity: 0.9;
+          opacity: 0.8;
+          font-weight: 500;
       }
 
       .progress-section {
@@ -115,11 +331,12 @@
           font-size: 1.3em;
           font-weight: 600;
           margin-bottom: 15px;
-          color: #333;
+          color: #ddd;
       }
 
       .progress-bar-container {
-          background: #e0e0e0;
+          background: rgba(50, 50, 50, 0.8);
+          border: 1px solid #666;
           border-radius: 25px;
           height: 30px;
           overflow: hidden;
@@ -129,7 +346,7 @@
 
       .progress-bar {
           height: 100%;
-          background: linear-gradient(90deg, #4CAF50, #8BC34A);
+          background: linear-gradient(90deg, #4CAF50, #66BB6A);
           border-radius: 25px;
           transition: width 0.8s ease;
           position: relative;
@@ -141,26 +358,31 @@
           left: 50%;
           transform: translate(-50%, -50%);
           font-weight: bold;
-          color: #333;
+          color: #fff;
           z-index: 2;
+          font-family: 'Orbitron', sans-serif;
+          text-shadow: 0 0 3px #000;
       }
 
       .weekly-progress {
-          background: #f8f9fa;
+          background: rgba(45, 45, 45, 0.8);
+          border: 1px solid #666;
           border-radius: 15px;
           padding: 20px;
           margin-top: 20px;
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
       }
 
       .weekly-title {
           font-size: 1.2em;
           font-weight: 600;
           margin-bottom: 15px;
-          color: #333;
+          color: #ddd;
       }
 
       .weekly-bar-container {
-          background: #e0e0e0;
+          background: rgba(50, 50, 50, 0.8);
+          border: 1px solid #666;
           border-radius: 20px;
           height: 25px;
           overflow: hidden;
@@ -181,9 +403,17 @@
           left: 50%;
           transform: translate(-50%, -50%);
           font-weight: bold;
-          color: #333;
+          color: #fff;
           font-size: 0.9em;
           z-index: 2;
+          font-family: 'Orbitron', sans-serif;
+          text-shadow: 0 0 3px #000;
+      }
+
+      #weeklyDetails {
+          color: #aaa;
+          font-family: 'Orbitron', sans-serif;
+          font-weight: 400;
       }
 
       @media (max-width: 600px) {
@@ -202,6 +432,83 @@
   </style>
 </head>
 <body>
+<div class="stars">
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+  <div class="star"></div>
+</div>
 <div class="container">
   <h1>🏃‍♂️ Running Progress Tracker</h1>
 
