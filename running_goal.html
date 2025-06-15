@@ -360,6 +360,29 @@
 		document.getElementById('totalKmLabel').textContent = `Total KM Goal for ${currentYear}:`;
 	}
 
+	// Function to save input values to localStorage
+	function saveToLocalStorage() {
+		const totalKm = document.getElementById('totalKm').value;
+		const currentKm = document.getElementById('currentKm').value;
+
+		localStorage.setItem('runningTracker_totalKm', totalKm);
+		localStorage.setItem('runningTracker_currentKm', currentKm);
+	}
+
+	// Function to load input values from localStorage
+	function loadFromLocalStorage() {
+		const savedTotalKm = localStorage.getItem('runningTracker_totalKm');
+		const savedCurrentKm = localStorage.getItem('runningTracker_currentKm');
+
+		if (savedTotalKm !== null) {
+			document.getElementById('totalKm').value = savedTotalKm;
+		}
+
+		if (savedCurrentKm !== null) {
+			document.getElementById('currentKm').value = savedCurrentKm;
+		}
+	}
+
 	// Function to ensure non-negative input
 	function validateInput(inputElement) {
 		const value = parseFloat(inputElement.value);
@@ -371,14 +394,17 @@
 	// Add event listeners
 	document.getElementById('totalKm').addEventListener('input', function() {
 		validateInput(this);
+		saveToLocalStorage();
 		calculateProgress();
 	});
 	document.getElementById('currentKm').addEventListener('input', function() {
 		validateInput(this);
+		saveToLocalStorage();
 		calculateProgress();
 	});
 
 	// Initial setup
+	loadFromLocalStorage();
 	updateYear();
 	calculateProgress();
 </script>
