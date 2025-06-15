@@ -251,8 +251,8 @@
 
 <script>
 	function calculateProgress() {
-		const totalKm = parseFloat(document.getElementById('totalKm').value) || 0;
-		const currentKm = parseFloat(document.getElementById('currentKm').value) || 0;
+		const totalKm = Math.max(0, parseFloat(document.getElementById('totalKm').value) || 0);
+		const currentKm = Math.max(0, parseFloat(document.getElementById('currentKm').value) || 0);
 
 		if (totalKm === 0) {
 			resetDisplay();
@@ -266,18 +266,18 @@
 
 		// Calculate weeks passed and remaining
 		const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-		const weeksPassed = Math.floor((now - startOfYear) / msPerWeek);
+		const weeksPassed = Math.max(0, Math.floor((now - startOfYear) / msPerWeek));
 		const totalWeeksInYear = Math.ceil((endOfYear - startOfYear) / msPerWeek);
-		const weeksRemaining = totalWeeksInYear - weeksPassed;
+		const weeksRemaining = Math.max(0, totalWeeksInYear - weeksPassed);
 
 		// Calculate original weekly target (total km / total weeks)
-		const originalWeeklyTarget = totalKm / totalWeeksInYear;
+		const originalWeeklyTarget = totalWeeksInYear > 0 ? Math.max(0, totalKm / totalWeeksInYear) : 0;
 
 		// Calculate what should have been completed by now
-		const shouldHaveCompleted = originalWeeklyTarget * weeksPassed;
+		const shouldHaveCompleted = Math.max(0, originalWeeklyTarget * weeksPassed);
 
 		// Calculate weekly km needed for remaining weeks
-		const remainingKm = totalKm - currentKm;
+		const remainingKm = Math.max(0, totalKm - currentKm);
 		const weeklyNeeded = weeksRemaining > 0 ? remainingKm / weeksRemaining : 0;
 
 		// Calculate progress percentages
@@ -288,8 +288,8 @@
 		const difference = currentKm - shouldHaveCompleted;
 
 		// Update display
-		document.getElementById('weeklyNeeded').textContent = weeklyNeeded.toFixed(1);
-		document.getElementById('weeksLeft').textContent = weeksRemaining;
+		document.getElementById('weeklyNeeded').textContent = Math.max(0, weeklyNeeded).toFixed(1);
+		document.getElementById('weeksLeft').textContent = Math.max(0, weeksRemaining);
 
 		if (difference >= 0) {
 			document.getElementById('kmBehindAhead').textContent = `+${difference.toFixed(1)}`;
@@ -306,13 +306,14 @@
 		const clampedWeeklyProgress = Math.min(150, Math.max(0, weeklyProgress));
 
 		document.getElementById('overallProgress').style.width = clampedOverallProgress + '%';
-		document.getElementById('overallProgressText').textContent = overallProgress.toFixed(1) + '%';
+		document.getElementById('overallProgressText').textContent = Math.max(0, overallProgress).toFixed(1) + '%';
 
 		document.getElementById('weeklyProgress').style.width = (clampedWeeklyProgress / 150) * 100 + '%';
-		document.getElementById('weeklyProgressText').textContent = weeklyProgress.toFixed(1) + '%';
+		document.getElementById('weeklyProgressText').textContent = Math.max(0, weeklyProgress).toFixed(1) + '%';
 
 		// Update weekly details
-		const weeklyDetails = `Original plan: ${originalWeeklyTarget.toFixed(1)} km/week • Week ${weeksPassed + 1} of ${totalWeeksInYear}`;
+		const currentWeek = Math.max(1, weeksPassed + 1);
+		const weeklyDetails = `Original plan: ${Math.max(0, originalWeeklyTarget).toFixed(1)} km/week • Week ${currentWeek} of ${Math.max(1, totalWeeksInYear)}`;
 		document.getElementById('weeklyDetails').textContent = weeklyDetails;
 
 		// Update progress bar colors based on performance
@@ -359,9 +360,23 @@
 		document.getElementById('totalKmLabel').textContent = `Total KM Goal for ${currentYear}:`;
 	}
 
+	// Function to ensure non-negative input
+	function validateInput(inputElement) {
+		const value = parseFloat(inputElement.value);
+		if (value < 0 || isNaN(value)) {
+			inputElement.value = 0;
+		}
+	}
+
 	// Add event listeners
-	document.getElementById('totalKm').addEventListener('input', calculateProgress);
-	document.getElementById('currentKm').addEventListener('input', calculateProgress);
+	document.getElementById('totalKm').addEventListener('input', function() {
+		validateInput(this);
+		calculateProgress();
+	});
+	document.getElementById('currentKm').addEventListener('input', function() {
+		validateInput(this);
+		calculateProgress();
+	});
 
 	// Initial setup
 	updateYear();
