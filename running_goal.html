@@ -6,6 +6,8 @@
   <title>Running Progress Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="/favicon.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
   <meta property="og:title" content="Running Progress Tracker">
   <meta property="og:description" content="Track your running progress in a beautiful, futuristic space-themed interface.">
   <meta property="og:image" content="https://picsum.photos/1200/630?random=1">
@@ -189,7 +191,7 @@
                   0 0 20px rgba(0, 180, 216, 0.03);
           backdrop-filter: blur(10px);
           position: fixed;
-          top: 35%;
+          top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
           transform-style: preserve-3d;
@@ -436,14 +438,13 @@
               width: 95%;
               top: 50%;
               transform: translate(-50%, -50%);
-              max-height: 90vh;
-              overflow-y: auto;
               margin: 20px 0;
           }
 
           h1 {
               font-size: 1.8em;
               margin-bottom: 20px;
+              margin-top: 20px;
           }
 
           .stats-grid {
@@ -502,11 +503,6 @@
           box-shadow: 0 4px 12px rgba(252, 76, 2, 0.3);
           z-index: 2;
           cursor: pointer;
-      }
-
-      .strava-connect:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(252, 76, 2, 0.4);
       }
 
       .strava-connect img {
@@ -630,10 +626,9 @@
   <div class="star"></div>
   <div class="star"></div>
   <div class="star"></div>
-  <div class="star"></div>
 </div>
 <div id="stravaConnect" class="strava-connect">
-  <img src="https://developers.strava.com/assets/logo-strava-events.svg" alt="Strava">
+  <img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava">
   Connect with Strava
 </div>
 <div class="container">
@@ -680,11 +675,16 @@
       <div class="weekly-text" id="weeklyProgressText">0%</div>
     </div>
     <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="weeklyDetails"></div>
+    <div style="height: 300px; margin-top: 20px;">
+      <canvas id="weeklyChart"></canvas>
+    </div>
   </div>
 </div>
 <div class="signature">chipset508 vibe coding 6/2025</div>
 
 <script>
+	let weeklyChart = null;
+
 	function calculateProgress() {
 		const totalKm = Math.max(0, parseFloat(document.getElementById('totalKm').value) || 0);
 		const currentKm = Math.max(0, parseFloat(document.getElementById('currentKm').value) || 0);
@@ -774,6 +774,139 @@
 		} else {
 			weeklyBar.style.background = 'linear-gradient(90deg, #FF9800, #FF5722)';
 		}
+
+		// Update the weekly chart
+		updateWeeklyChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget, currentKm);
+	}
+
+	function updateWeeklyChart(weeksPassed, totalWeeks, weeklyTarget, currentKm) {
+		const ctx = document.getElementById('weeklyChart');
+		if (!ctx) return;
+
+		// Destroy existing chart if it exists
+		if (weeklyChart) {
+			weeklyChart.destroy();
+			weeklyChart = null;
+		}
+
+		// Hide chart container if no weekly data
+		const chartContainer = ctx.parentElement;
+		if (!window.weeklyProgressData || window.weeklyProgressData.length === 0) {
+			chartContainer.style.display = 'none';
+			return;
+		}
+
+		// Show chart container
+		chartContainer.style.display = 'block';
+
+		// Prepare data
+		const labels = Array.from({length: totalWeeks}, (_, i) => `Week ${i + 1}`);
+		const plannedData = Array.from({length: totalWeeks}, (_, i) => weeklyTarget * (i + 1));
+
+		// Use stored weekly progress data
+		const actualData = window.weeklyProgressData.map((value, index) =>
+			index <= weeksPassed ? value : null
+		);
+
+		// Create new chart
+		weeklyChart = new Chart(ctx, {
+			type: 'line',
+			data: {
+				labels: labels,
+				datasets: [
+					{
+						label: 'Original Plan',
+						data: plannedData,
+						borderColor: 'rgba(0, 180, 216, 0.8)',
+						backgroundColor: 'rgba(0, 180, 216, 0.1)',
+						borderWidth: 2,
+						fill: false,
+						tension: 0.4
+					},
+					{
+						label: 'Current Progress',
+						data: actualData,
+						borderColor: 'rgba(255, 152, 0, 0.8)',
+						backgroundColor: 'rgba(255, 152, 0, 0.1)',
+						borderWidth: 2,
+						fill: false,
+						tension: 0.4,
+						spanGaps: true
+					}
+				]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						labels: {
+							color: '#fff',
+							font: {
+								family: 'Orbitron'
+							}
+						}
+					},
+					tooltip: {
+						mode: 'index',
+						intersect: false,
+						backgroundColor: 'rgba(0, 0, 0, 0.8)',
+						titleColor: '#fff',
+						bodyColor: '#fff',
+						borderColor: 'rgba(255, 255, 255, 0.2)',
+						borderWidth: 1
+					},
+					zoom: {
+						pan: {
+							enabled: true,
+							mode: 'x',
+						},
+						zoom: {
+							wheel: {
+								enabled: true,
+							},
+							pinch: {
+								enabled: true
+							},
+							mode: 'x',
+							drag: {
+								enabled: true,
+								backgroundColor: 'rgba(0, 180, 216, 0.1)',
+								borderColor: 'rgba(0, 180, 216, 0.3)',
+								borderWidth: 1
+							}
+						},
+						limits: {
+							x: {min: 'original', max: 'original', minRange: 4}
+						}
+					}
+				},
+				scales: {
+					x: {
+						grid: {
+							color: 'rgba(255, 255, 255, 0.1)'
+						},
+						ticks: {
+							color: '#fff',
+							font: {
+								family: 'Orbitron'
+							}
+						}
+					},
+					y: {
+						grid: {
+							color: 'rgba(255, 255, 255, 0.1)'
+						},
+						ticks: {
+							color: '#fff',
+							font: {
+								family: 'Orbitron'
+							}
+						}
+					}
+				}
+			}
+		});
 	}
 
 	function resetDisplay() {
@@ -787,6 +920,12 @@
 		document.getElementById('weeklyProgressText').textContent = '0%';
 		document.getElementById('weeklyDetails').textContent = '';
 		document.getElementById('kmBehindAhead').parentElement.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+
+		// Reset chart
+		if (weeklyChart) {
+			weeklyChart.destroy();
+			weeklyChart = null;
+		}
 	}
 
 	// Function to update the year dynamically
@@ -869,18 +1008,29 @@
 
 		if (accessToken && tokenExpiry && new Date().getTime() < parseInt(tokenExpiry)) {
 			updateStravaButton(true);
-			fetchStravaData(accessToken);
+			// Check for cached data first
+			const cachedData = localStorage.getItem('strava_weekly_progress');
+			if (cachedData) {
+				window.weeklyProgressData = JSON.parse(cachedData);
+				const totalDistance = window.weeklyProgressData[window.weeklyProgressData.length - 1] || 0;
+				document.getElementById('currentKm').value = totalDistance.toFixed(1);
+				calculateProgress();
+			} else {
+				fetchStravaData(accessToken);
+			}
 		}
 
 		stravaConnect.addEventListener('click', function(e) {
 			e.preventDefault();
 			if (accessToken && new Date().getTime() < parseInt(tokenExpiry)) {
+				// Clear cache and fetch fresh data when manually clicking connect
+				clearStravaCache();
 				fetchStravaData(accessToken);
 			} else {
 				try {
 					const scope = 'read,activity:read';
 					const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(STRAVA_REDIRECT_URI)}&approval_prompt=force&scope=${scope}`;
-					console.log('Redirecting to:', authUrl); // Debug log
+					console.log('Redirecting to:', authUrl);
 					window.location.href = authUrl;
 				} catch (error) {
 					console.error('Error initiating Strava auth:', error);
@@ -896,12 +1046,12 @@
 
 		if (loading) {
 			stravaConnect.classList.add('strava-loading');
-			stravaConnect.innerHTML = '<img src="https://developers.strava.com/assets/logo-strava-events.svg" alt="Strava"> Loading...';
+			stravaConnect.innerHTML = '<img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava"> Loading...';
 		} else if (connected) {
 			stravaConnect.classList.add('strava-connected');
-			stravaConnect.innerHTML = '<img src="https://developers.strava.com/assets/logo-strava-events.svg" alt="Strava"> Connected to Strava';
+			stravaConnect.innerHTML = '<img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava"> Connected to Strava';
 		} else {
-			stravaConnect.innerHTML = '<img src="https://developers.strava.com/assets/logo-strava-events.svg" alt="Strava"> Connect with Strava';
+			stravaConnect.innerHTML = '<img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava"> Connect with Strava';
 		}
 	}
 
@@ -950,6 +1100,22 @@
 		updateStravaButton(true, true);
 
 		try {
+			// Check if we have cached data that's less than 24 hours old
+			const cachedData = localStorage.getItem('strava_weekly_progress');
+			const cacheTimestamp = localStorage.getItem('strava_weekly_progress_timestamp');
+			const now = new Date().getTime();
+
+			if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 24 * 60 * 60 * 1000) {
+				// Use cached data if it's less than 24 hours old
+				const weeklyProgress = JSON.parse(cachedData);
+				window.weeklyProgressData = weeklyProgress;
+				const totalDistance = weeklyProgress[weeklyProgress.length - 1] || 0;
+				document.getElementById('currentKm').value = totalDistance.toFixed(1);
+				calculateProgress();
+				updateStravaButton(true);
+				return;
+			}
+
 			const currentYear = new Date().getFullYear();
 			const startOfYear = new Date(currentYear, 0, 1).getTime() / 1000;
 			const endOfYear = new Date(currentYear, 11, 31).getTime() / 1000;
@@ -966,10 +1132,35 @@
 
 			const activities = await response.json();
 			const runningActivities = activities.filter(activity => activity.type === 'Run');
-			const totalDistance = runningActivities.reduce((sum, activity) => sum + activity.distance / 1000, 0);
 
-			// Update the current KM input with Strava data
+			// Calculate weekly progress
+			const weeklyProgress = new Array(52).fill(0);
+			runningActivities.forEach(activity => {
+				const activityDate = new Date(activity.start_date);
+				const weekNumber = Math.floor((activityDate - new Date(currentYear, 0, 1)) / (7 * 24 * 60 * 60 * 1000));
+				if (weekNumber >= 0 && weekNumber < 52) {
+					weeklyProgress[weekNumber] += activity.distance / 1000; // Convert to km
+				}
+			});
+
+			// Calculate cumulative progress
+			let cumulativeProgress = 0;
+			const cumulativeWeeklyProgress = weeklyProgress.map(weekDistance => {
+				cumulativeProgress += weekDistance;
+				return cumulativeProgress;
+			});
+
+			// Store the data in localStorage with timestamp
+			localStorage.setItem('strava_weekly_progress', JSON.stringify(cumulativeWeeklyProgress));
+			localStorage.setItem('strava_weekly_progress_timestamp', now.toString());
+
+			// Update the current KM input with total distance
+			const totalDistance = runningActivities.reduce((sum, activity) => sum + activity.distance / 1000, 0);
 			document.getElementById('currentKm').value = totalDistance.toFixed(1);
+
+			// Store weekly progress for the chart
+			window.weeklyProgressData = cumulativeWeeklyProgress;
+
 			calculateProgress();
 			updateStravaButton(true);
 		} catch (error) {
@@ -977,6 +1168,12 @@
 			alert('Failed to fetch Strava data. Please try again.');
 			updateStravaButton(true);
 		}
+	}
+
+	// Add function to clear cached data
+	function clearStravaCache() {
+		localStorage.removeItem('strava_weekly_progress');
+		localStorage.removeItem('strava_weekly_progress_timestamp');
 	}
 
 	// Initialize Strava integration
