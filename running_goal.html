@@ -484,6 +484,66 @@
           animation: signatureGlow 3s ease-in-out infinite alternate;
       }
 
+      .strava-connect {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #FC4C02;
+          color: white;
+          padding: 10px 20px;
+          border-radius: 20px;
+          text-decoration: none;
+          font-family: 'Orbitron', sans-serif;
+          font-size: 0.9em;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(252, 76, 2, 0.3);
+          z-index: 2;
+          cursor: pointer;
+      }
+
+      .strava-connect:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(252, 76, 2, 0.4);
+      }
+
+      .strava-connect img {
+          width: 20px;
+          height: 20px;
+      }
+
+      .strava-connected {
+          background: #2E7D32;
+          box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+      }
+
+      .strava-connected:hover {
+          box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
+      }
+
+      .strava-loading {
+          background: #666;
+          pointer-events: none;
+      }
+
+      .strava-loading::after {
+          content: '';
+          display: inline-block;
+          width: 12px;
+          height: 12px;
+          margin-left: 8px;
+          border: 2px solid #fff;
+          border-radius: 50%;
+          border-top-color: transparent;
+          animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+          to { transform: rotate(360deg); }
+      }
+
       @keyframes signatureGlow {
           0% {
               opacity: 0.4;
@@ -571,6 +631,10 @@
   <div class="star"></div>
   <div class="star"></div>
   <div class="star"></div>
+</div>
+<div id="stravaConnect" class="strava-connect">
+  <img src="https://developers.strava.com/assets/logo-strava-events.svg" alt="Strava">
+  Connect with Strava
 </div>
 <div class="container">
   <h1>🏃‍♂️ Running Progress Tracker</h1>
@@ -778,6 +842,145 @@
 	loadFromLocalStorage();
 	updateYear();
 	calculateProgress();
+
+	// Strava Integration
+	const STRAVA_CLIENT_ID = '46751';
+	const STRAVA_CLIENT_SECRET = '9875334a71c863428d2db37e5eeb6558d4e60692';
+	const STRAVA_REDIRECT_URI = window.location.origin + window.location.pathname;
+
+	function initStravaIntegration() {
+		const stravaConnect = document.getElementById('stravaConnect');
+		const accessToken = localStorage.getItem('strava_access_token');
+		const tokenExpiry = localStorage.getItem('strava_token_expiry');
+
+		// Check for authorization code in URL
+		const urlParams = new URLSearchParams(window.location.search);
+		const code = urlParams.get('code');
+		const error = urlParams.get('error');
+
+		if (code) {
+			handleStravaCallback(code);
+		} else if (error) {
+			console.error('Strava auth error:', error);
+			alert('Failed to connect with Strava. Please try again.');
+			// Clean up URL
+			window.history.replaceState({}, document.title, window.location.pathname);
+		}
+
+		if (accessToken && tokenExpiry && new Date().getTime() < parseInt(tokenExpiry)) {
+			updateStravaButton(true);
+			fetchStravaData(accessToken);
+		}
+
+		stravaConnect.addEventListener('click', function(e) {
+			e.preventDefault();
+			if (accessToken && new Date().getTime() < parseInt(tokenExpiry)) {
+				fetchStravaData(accessToken);
+			} else {
+				try {
+					const scope = 'read,activity:read';
+					const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(STRAVA_REDIRECT_URI)}&approval_prompt=force&scope=${scope}`;
+					console.log('Redirecting to:', authUrl); // Debug log
+					window.location.href = authUrl;
+				} catch (error) {
+					console.error('Error initiating Strava auth:', error);
+					alert('Error connecting to Strava. Please try again.');
+				}
+			}
+		});
+	}
+
+	function updateStravaButton(connected, loading = false) {
+		const stravaConnect = document.getElementById('stravaConnect');
+		stravaConnect.className = 'strava-connect';
+
+		if (loading) {
+			stravaConnect.classList.add('strava-loading');
+			stravaConnect.innerHTML = '<img src="https://developers.strava.com/assets/logo-strava-events.svg" alt="Strava"> Loading...';
+		} else if (connected) {
+			stravaConnect.classList.add('strava-connected');
+			stravaConnect.innerHTML = '<img src="https://developers.strava.com/assets/logo-strava-events.svg" alt="Strava"> Connected to Strava';
+		} else {
+			stravaConnect.innerHTML = '<img src="https://developers.strava.com/assets/logo-strava-events.svg" alt="Strava"> Connect with Strava';
+		}
+	}
+
+	async function handleStravaCallback(code) {
+		updateStravaButton(false, true);
+
+		try {
+			const response = await fetch('https://www.strava.com/oauth/token', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					client_id: STRAVA_CLIENT_ID,
+					client_secret: STRAVA_CLIENT_SECRET,
+					code: code,
+					grant_type: 'authorization_code'
+				})
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(`Failed to get access token: ${errorData.message || response.statusText}`);
+			}
+
+			const data = await response.json();
+
+			// Store tokens
+			localStorage.setItem('strava_access_token', data.access_token);
+			localStorage.setItem('strava_refresh_token', data.refresh_token);
+			localStorage.setItem('strava_token_expiry', (new Date().getTime() + data.expires_in * 1000).toString());
+
+			// Clean up URL
+			window.history.replaceState({}, document.title, window.location.pathname);
+
+			// Fetch user data
+			await fetchStravaData(data.access_token);
+		} catch (error) {
+			console.error('Error during Strava authentication:', error);
+			alert('Failed to connect with Strava: ' + error.message);
+			updateStravaButton(false);
+		}
+	}
+
+	async function fetchStravaData(accessToken) {
+		updateStravaButton(true, true);
+
+		try {
+			const currentYear = new Date().getFullYear();
+			const startOfYear = new Date(currentYear, 0, 1).getTime() / 1000;
+			const endOfYear = new Date(currentYear, 11, 31).getTime() / 1000;
+
+			const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?after=${startOfYear}&before=${endOfYear}&per_page=200`, {
+				headers: {
+					'Authorization': `Bearer ${accessToken}`
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch Strava data');
+			}
+
+			const activities = await response.json();
+			const runningActivities = activities.filter(activity => activity.type === 'Run');
+			const totalDistance = runningActivities.reduce((sum, activity) => sum + activity.distance / 1000, 0);
+
+			// Update the current KM input with Strava data
+			document.getElementById('currentKm').value = totalDistance.toFixed(1);
+			calculateProgress();
+			updateStravaButton(true);
+		} catch (error) {
+			console.error('Error fetching Strava data:', error);
+			alert('Failed to fetch Strava data. Please try again.');
+			updateStravaButton(true);
+		}
+	}
+
+	// Initialize Strava integration
+	initStravaIntegration();
 </script>
 </body>
 </html>
