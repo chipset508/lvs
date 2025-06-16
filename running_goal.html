@@ -433,10 +433,41 @@
 
           .container {
               padding: 20px;
+              width: 95%;
+              top: 50%;
+              transform: translate(-50%, -50%);
+              max-height: 90vh;
+              overflow-y: auto;
+              margin: 20px 0;
           }
 
           h1 {
-              font-size: 2em;
+              font-size: 1.8em;
+              margin-bottom: 20px;
+          }
+
+          .stats-grid {
+              grid-template-columns: 1fr;
+              gap: 15px;
+          }
+
+          .stat-card {
+              padding: 15px;
+          }
+
+          .progress-section {
+              margin-bottom: 20px;
+          }
+
+          .weekly-progress {
+              padding: 15px;
+              margin-top: 15px;
+          }
+
+          .signature {
+              bottom: 10px;
+              right: 10px;
+              font-size: 0.5em;
           }
       }
 
@@ -467,7 +498,6 @@
 </head>
 <body>
 <div class="stars">
-  <div class="star"></div>
   <div class="star"></div>
   <div class="star"></div>
   <div class="star"></div>
