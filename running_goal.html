@@ -613,10 +613,6 @@
   <div class="star"></div>
   <div class="star"></div>
   <div class="star"></div>
-  <div class="star"></div>
-  <div class="star"></div>
-  <div class="star"></div>
-  <div class="star"></div>
 </div>
 <div id="stravaConnect" class="strava-connect">
   <img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava">
@@ -670,11 +666,20 @@
       <canvas id="weeklyChart"></canvas>
     </div>
   </div>
+
+  <div class="weekly-progress">
+    <div class="weekly-title">Weekly Distance Gap</div>
+    <div style="height: 300px; margin-top: 20px;">
+      <canvas id="gapChart"></canvas>
+    </div>
+    <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="gapDetails"></div>
+  </div>
 </div>
 <div class="signature">chipset508 vibe coding 6/2025</div>
 
 <script>
 	let weeklyChart = null;
+	let gapChart = null;
 
 	function calculateProgress() {
 		const totalKm = Math.max(0, parseFloat(document.getElementById('totalKm').value) || 0);
@@ -768,6 +773,8 @@
 
 		// Update the weekly chart
 		updateWeeklyChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget, currentKm);
+		// Update the gap chart
+		updateGapChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget);
 	}
 
 	function updateWeeklyChart(weeksPassed, totalWeeks, weeklyTarget, currentKm) {
@@ -900,6 +907,152 @@
 		});
 	}
 
+	function updateGapChart(weeksPassed, totalWeeks, weeklyTarget) {
+		const ctx = document.getElementById('gapChart');
+		if (!ctx) return;
+
+		// Destroy existing chart if it exists
+		if (gapChart) {
+			gapChart.destroy();
+			gapChart = null;
+		}
+
+		// Hide chart container if no weekly data
+		const chartContainer = ctx.parentElement;
+		if (!window.weeklyProgressData || window.weeklyProgressData.length === 0) {
+			chartContainer.style.display = 'none';
+			return;
+		}
+
+		// Show chart container
+		chartContainer.style.display = 'block';
+
+		// Calculate weekly gaps
+		const gaps = [];
+		const labels = [];
+
+		for (let week = 0; week <= Math.min(weeksPassed, 51); week++) {
+			const expectedDistance = weeklyTarget * (week + 1);
+			const actualDistance = window.weeklyProgressData[week] || 0;
+			const gap = actualDistance - expectedDistance;
+
+			gaps.push(gap);
+			labels.push(`W${week + 1}`);
+		}
+
+		// Create color array based on gap values
+		const colors = gaps.map(gap => {
+			if (gap >= 0) {
+				return 'rgba(76, 175, 80, 0.8)'; // Green for ahead
+			} else {
+				return 'rgba(244, 67, 54, 0.8)'; // Red for behind
+			}
+		});
+
+		// Create new chart
+		gapChart = new Chart(ctx, {
+			type: 'bar',
+			data: {
+				labels: labels,
+				datasets: [{
+					label: 'Distance Gap (km)',
+					data: gaps,
+					backgroundColor: colors,
+					borderColor: colors.map(color => color.replace('0.8', '1')),
+					borderWidth: 1,
+					borderRadius: 4
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						display: false
+					},
+					tooltip: {
+						mode: 'index',
+						intersect: false,
+						backgroundColor: 'rgba(0, 0, 0, 0.8)',
+						titleColor: '#fff',
+						bodyColor: '#fff',
+						borderColor: 'rgba(255, 255, 255, 0.2)',
+						borderWidth: 1,
+						callbacks: {
+							label: function(context) {
+								const value = context.parsed.y;
+								const status = value >= 0 ? 'ahead' : 'behind';
+								return `Week ${context.dataIndex + 1}: ${Math.abs(value).toFixed(1)} km ${status}`;
+							}
+						}
+					},
+					zoom: {
+						pan: {
+							enabled: true,
+							mode: 'x',
+						},
+						zoom: {
+							wheel: {
+								enabled: true,
+							},
+							pinch: {
+								enabled: true
+							},
+							mode: 'x',
+							drag: {
+								enabled: true,
+								backgroundColor: 'rgba(0, 180, 216, 0.1)',
+								borderColor: 'rgba(0, 180, 216, 0.3)',
+								borderWidth: 1
+							}
+						},
+						limits: {
+							x: {min: 'original', max: 'original', minRange: 4}
+						}
+					}
+				},
+				scales: {
+					x: {
+						grid: {
+							color: 'rgba(255, 255, 255, 0.1)'
+						},
+						ticks: {
+							color: '#fff',
+							font: {
+								family: 'Orbitron',
+								size: 10
+							},
+							maxRotation: 45
+						}
+					},
+					y: {
+						grid: {
+							color: 'rgba(255, 255, 255, 0.1)'
+						},
+						ticks: {
+							color: '#fff',
+							font: {
+								family: 'Orbitron'
+							},
+							callback: function(value) {
+								return value + ' km';
+							}
+						}
+					}
+				}
+			}
+		});
+
+		// Update gap details
+		const currentGap = gaps[gaps.length - 1] || 0;
+		const averageGap = gaps.length > 0 ? gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length : 0;
+		const aheadWeeks = gaps.filter(gap => gap >= 0).length;
+		const behindWeeks = gaps.filter(gap => gap < 0).length;
+
+		const gapDetails = `Current gap: ${currentGap >= 0 ? '+' : ''}${currentGap.toFixed(1)} km • Average gap: ${averageGap >= 0 ? '+' : ''}${averageGap.toFixed(1)} km • Ahead: ${aheadWeeks} weeks • Behind: ${behindWeeks} weeks`;
+		document.getElementById('gapDetails').textContent = gapDetails;
+	}
+
 	function resetDisplay() {
 		document.getElementById('weeklyNeeded').textContent = '0';
 		document.getElementById('weeksLeft').textContent = '0';
@@ -910,12 +1063,17 @@
 		document.getElementById('weeklyProgress').style.width = '0%';
 		document.getElementById('weeklyProgressText').textContent = '0%';
 		document.getElementById('weeklyDetails').textContent = '';
+		document.getElementById('gapDetails').textContent = '';
 		document.getElementById('kmBehindAhead').parentElement.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
 
-		// Reset chart
+		// Reset charts
 		if (weeklyChart) {
 			weeklyChart.destroy();
 			weeklyChart = null;
+		}
+		if (gapChart) {
+			gapChart.destroy();
+			gapChart = null;
 		}
 	}
 
@@ -1150,7 +1308,7 @@
 			document.getElementById('currentKm').value = totalDistance.toFixed(1);
 
 			// Store weekly progress for the chart
-			window.weeklyProgressData = cumulativeWeeklyProgress;a
+			window.weeklyProgressData = cumulativeWeeklyProgress;
 
 			calculateProgress();
 			updateStravaButton(true);
