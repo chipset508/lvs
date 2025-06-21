@@ -674,12 +674,21 @@
     </div>
     <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="gapDetails"></div>
   </div>
+
+  <div class="weekly-progress">
+    <div class="weekly-title">Weekly Distance</div>
+    <div style="height: 300px; margin-top: 20px;">
+      <canvas id="weeklyDistanceChart"></canvas>
+    </div>
+    <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="weeklyDistanceDetails"></div>
+  </div>
 </div>
 <div class="signature">chipset508 vibe coding 6/2025</div>
 
 <script>
 	let weeklyChart = null;
 	let gapChart = null;
+	let weeklyDistanceChart = null;
 
 	function calculateProgress() {
 		const totalKm = Math.max(0, parseFloat(document.getElementById('totalKm').value) || 0);
@@ -775,6 +784,8 @@
 		updateWeeklyChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget, currentKm);
 		// Update the gap chart
 		updateGapChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget);
+		// Update the weekly distance chart
+		updateWeeklyDistanceChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget, currentKm);
 	}
 
 	function updateWeeklyChart(weeksPassed, totalWeeks, weeklyTarget, currentKm) {
@@ -1053,6 +1064,207 @@
 		document.getElementById('gapDetails').textContent = gapDetails;
 	}
 
+	function updateWeeklyDistanceChart(weeksPassed, totalWeeks, weeklyTarget, currentKm) {
+		const ctx = document.getElementById('weeklyDistanceChart');
+		if (!ctx) return;
+
+		// Destroy existing chart if it exists
+		if (weeklyDistanceChart) {
+			weeklyDistanceChart.destroy();
+			weeklyDistanceChart = null;
+		}
+
+		// Hide chart container if no weekly data
+		const chartContainer = ctx.parentElement;
+		if (!window.weeklyProgressData || window.weeklyProgressData.length === 0) {
+			chartContainer.style.display = 'none';
+			return;
+		}
+
+		// Show chart container
+		chartContainer.style.display = 'block';
+
+		// Calculate individual weekly distances
+		const weeklyDistances = [];
+		const labels = [];
+		const targetLine = [];
+
+		// Get the total goal from the input
+		const totalGoal = parseFloat(document.getElementById('totalKm').value) || 0;
+		const remainingDistance = Math.max(0, totalGoal - currentKm);
+		const weeksRemaining = Math.max(0, totalWeeks - weeksPassed);
+		const adjustedWeeklyTarget = weeksRemaining > 0 ? remainingDistance / weeksRemaining : 0;
+
+		for (let week = 0; week <= Math.min(weeksPassed, 51); week++) {
+			const currentWeekDistance = week === 0 ? window.weeklyProgressData[week] :
+				window.weeklyProgressData[week] - window.weeklyProgressData[week - 1];
+
+			weeklyDistances.push(currentWeekDistance || 0);
+			labels.push(`W${week + 1}`);
+
+			// Calculate dynamic target for each week based on progress up to that point
+			let dynamicTarget;
+			if (week === 0) {
+				// For week 1, use the original weekly target
+				dynamicTarget = weeklyTarget;
+			} else {
+				// For subsequent weeks, calculate what was needed based on actual progress
+				const progressUpToPreviousWeek = window.weeklyProgressData[week - 1] || 0;
+				const remainingDistanceAtWeek = Math.max(0, totalGoal - progressUpToPreviousWeek);
+				const remainingWeeksAtWeek = totalWeeks - week;
+				dynamicTarget = remainingWeeksAtWeek > 0 ? remainingDistanceAtWeek / remainingWeeksAtWeek : 0;
+			}
+
+			targetLine.push(dynamicTarget);
+		}
+
+		// Create color array based on performance vs adjusted target
+		const colors = weeklyDistances.map((distance, index) => {
+			const target = targetLine[index];
+			if (distance >= target * 1.1) {
+				return 'rgba(76, 175, 80, 0.8)'; // Green for exceeding target by 10%+
+			} else if (distance >= target) {
+				return 'rgba(139, 195, 74, 0.8)'; // Light green for meeting target
+			} else if (distance >= target * 0.8) {
+				return 'rgba(255, 193, 7, 0.8)'; // Yellow for close to target
+			} else {
+				return 'rgba(244, 67, 54, 0.8)'; // Red for below 80% of target
+			}
+		});
+
+		// Create new chart
+		weeklyDistanceChart = new Chart(ctx, {
+			type: 'bar',
+			data: {
+				labels: labels,
+				datasets: [
+					{
+						label: 'Weekly Distance (km)',
+						data: weeklyDistances,
+						backgroundColor: colors,
+						borderColor: colors.map(color => color.replace('0.8', '1')),
+						borderWidth: 1,
+						borderRadius: 4
+					},
+					{
+						label: 'Weekly Target',
+						data: targetLine,
+						type: 'line',
+						borderColor: 'rgba(0, 180, 216, 0.8)',
+						backgroundColor: 'rgba(0, 180, 216, 0.1)',
+						borderWidth: 2,
+						fill: false,
+						tension: 0,
+						pointRadius: 0,
+						pointHoverRadius: 4
+					}
+				]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						labels: {
+							color: '#fff',
+							font: {
+								family: 'Orbitron'
+							}
+						}
+					},
+					tooltip: {
+						mode: 'index',
+						intersect: false,
+						backgroundColor: 'rgba(0, 0, 0, 0.8)',
+						titleColor: '#fff',
+						bodyColor: '#fff',
+						borderColor: 'rgba(255, 255, 255, 0.2)',
+						borderWidth: 1,
+						callbacks: {
+							label: function(context) {
+								if (context.datasetIndex === 0) {
+									const distance = context.parsed.y;
+									const target = targetLine[context.dataIndex];
+									const percentage = ((distance / target) * 100).toFixed(1);
+									return `Week ${context.dataIndex + 1}: ${distance.toFixed(1)} km (${percentage}% of target)`;
+								} else {
+									const target = context.parsed.y;
+									return `Dynamic Target: ${target.toFixed(1)} km`;
+								}
+							}
+						}
+					},
+					zoom: {
+						pan: {
+							enabled: true,
+							mode: 'x',
+						},
+						zoom: {
+							wheel: {
+								enabled: true,
+							},
+							pinch: {
+								enabled: true
+							},
+							mode: 'x',
+							drag: {
+								enabled: true,
+								backgroundColor: 'rgba(0, 180, 216, 0.1)',
+								borderColor: 'rgba(0, 180, 216, 0.3)',
+								borderWidth: 1
+							}
+						},
+						limits: {
+							x: {min: 'original', max: 'original', minRange: 4}
+						}
+					}
+				},
+				scales: {
+					x: {
+						grid: {
+							color: 'rgba(255, 255, 255, 0.1)'
+						},
+						ticks: {
+							color: '#fff',
+							font: {
+								family: 'Orbitron',
+								size: 10
+							},
+							maxRotation: 45
+						}
+					},
+					y: {
+						grid: {
+							color: 'rgba(255, 255, 255, 0.1)'
+						},
+						ticks: {
+							color: '#fff',
+							font: {
+								family: 'Orbitron'
+							},
+							callback: function(value) {
+								return value + ' km';
+							}
+						}
+					}
+				}
+			}
+		});
+
+		// Update weekly distance details
+		const totalDistance = weeklyDistances.reduce((sum, distance) => sum + distance, 0);
+		const averageDistance = weeklyDistances.length > 0 ? totalDistance / weeklyDistances.length : 0;
+		const maxDistance = Math.max(...weeklyDistances);
+		const minDistance = Math.min(...weeklyDistances.filter(d => d > 0));
+
+		// Calculate performance against adjusted targets
+		const weeksAboveTarget = weeklyDistances.filter((distance, index) => distance >= targetLine[index]).length;
+		const weeksBelowTarget = weeklyDistances.filter((distance, index) => distance < targetLine[index]).length;
+
+		const weeklyDistanceDetails = `Total: ${totalDistance.toFixed(1)} km • Average: ${averageDistance.toFixed(1)} km/week • Max: ${maxDistance.toFixed(1)} km • Min: ${minDistance.toFixed(1)} km • Above target: ${weeksAboveTarget} weeks • Below target: ${weeksBelowTarget} weeks • Adjusted weekly target: ${adjustedWeeklyTarget.toFixed(1)} km`;
+		document.getElementById('weeklyDistanceDetails').textContent = weeklyDistanceDetails;
+	}
+
 	function resetDisplay() {
 		document.getElementById('weeklyNeeded').textContent = '0';
 		document.getElementById('weeksLeft').textContent = '0';
@@ -1074,6 +1286,10 @@
 		if (gapChart) {
 			gapChart.destroy();
 			gapChart = null;
+		}
+		if (weeklyDistanceChart) {
+			weeklyDistanceChart.destroy();
+			weeklyDistanceChart = null;
 		}
 	}
 
