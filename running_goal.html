@@ -545,6 +545,168 @@
               text-shadow: 0 0 15px rgba(0, 180, 216, 0.5);
           }
       }
+
+      .sync-status {
+          position: fixed;
+          top: 70px;
+          right: 20px;
+          background: rgba(60, 60, 60, 0.9);
+          color: #aaa;
+          padding: 5px 15px;
+          border-radius: 15px;
+          font-family: 'Orbitron', sans-serif;
+          font-size: 0.75em;
+          z-index: 2;
+          display: none;
+          backdrop-filter: blur(5px);
+      }
+
+      .edit-data-button {
+          position: fixed;
+          bottom: 80px;
+          right: 20px;
+          background: rgba(0, 180, 216, 0.9);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 20px;
+          font-family: 'Orbitron', sans-serif;
+          font-size: 0.9em;
+          z-index: 2;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 4px 12px rgba(0, 180, 216, 0.3);
+          transition: all 0.3s ease;
+      }
+
+      .edit-data-button:hover {
+          box-shadow: 0 6px 16px rgba(0, 180, 216, 0.5);
+          transform: translateY(-2px);
+      }
+
+      .modal-overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          z-index: 1000;
+          backdrop-filter: blur(5px);
+      }
+
+      .modal-overlay.active {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+      }
+
+      .modal-content {
+          background: rgba(3, 7, 18, 0.98);
+          border: 1px solid rgba(0, 180, 216, 0.3);
+          border-radius: 20px;
+          padding: 30px;
+          max-width: 600px;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      }
+
+      .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+      }
+
+      .modal-title {
+          font-size: 1.5em;
+          color: #fff;
+      }
+
+      .modal-close {
+          background: none;
+          border: none;
+          color: #fff;
+          font-size: 1.5em;
+          cursor: pointer;
+          padding: 0;
+          width: 30px;
+          height: 30px;
+      }
+
+      .week-editor {
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          gap: 10px;
+          align-items: center;
+          margin-bottom: 10px;
+          padding: 10px;
+          background: rgba(60, 60, 60, 0.3);
+          border-radius: 10px;
+      }
+
+      .week-label {
+          color: #ccc;
+          font-size: 0.9em;
+          min-width: 60px;
+      }
+
+      .week-input {
+          padding: 8px 12px;
+          background: rgba(80, 80, 80, 0.8);
+          border: 1px solid #666;
+          border-radius: 8px;
+          color: #fff;
+          font-family: 'Orbitron', sans-serif;
+          font-size: 0.9em;
+      }
+
+      .week-input:focus {
+          outline: none;
+          border-color: rgba(0, 180, 216, 0.8);
+      }
+
+      .week-date-range {
+          color: #888;
+          font-size: 0.75em;
+      }
+
+      .motivation-message {
+          background: linear-gradient(135deg, rgba(0, 180, 216, 0.2), rgba(0, 119, 182, 0.2));
+          border: 1px solid rgba(0, 180, 216, 0.3);
+          border-radius: 15px;
+          padding: 20px;
+          margin-bottom: 30px;
+          text-align: center;
+          font-size: 1.2em;
+          color: #fff;
+          animation: fadeIn 0.5s ease-in;
+      }
+
+      @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+      }
+
+      .milestone-marker {
+          position: absolute;
+          top: -8px;
+          width: 4px;
+          height: 46px;
+          background: rgba(255, 255, 255, 0.5);
+          transform: translateX(-2px);
+          z-index: 1;
+      }
+
+      .milestone-label {
+          position: absolute;
+          top: -25px;
+          transform: translateX(-50%);
+          font-size: 0.7em;
+          color: rgba(255, 255, 255, 0.7);
+          white-space: nowrap;
+      }
   </style>
 </head>
 <body>
@@ -614,73 +776,115 @@
   <div class="star"></div>
   <div class="star"></div>
 </div>
-<div id="stravaConnect" class="strava-connect">
-  <img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava">
+<button id="stravaConnect" class="strava-connect" aria-label="Connect with Strava to sync running data" role="button">
+  <img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava logo" aria-hidden="true">
   Connect with Strava
+</button>
+<div id="syncStatus" class="sync-status" role="status" aria-live="polite"></div>
+<button id="editDataButton" class="edit-data-button" aria-label="Edit weekly running data manually">📝 Edit Weekly Data</button>
+<div id="editModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalTitle">Edit Weekly Distances</h2>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close modal">×</button>
+    </div>
+    <div id="weekEditorContainer" role="form" aria-label="Weekly distance editor"></div>
+    <div style="margin-top: 20px; text-align: center; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+      <button onclick="saveManualData()" aria-label="Save weekly distance changes" style="padding: 12px 30px; background: rgba(0, 180, 216, 0.9); color: white; border: none; border-radius: 10px; cursor: pointer; font-family: 'Orbitron', sans-serif;">Save Changes</button>
+      <button onclick="exportData()" aria-label="Export data to JSON file" style="padding: 12px 30px; background: rgba(76, 175, 80, 0.9); color: white; border: none; border-radius: 10px; cursor: pointer; font-family: 'Orbitron', sans-serif;">📥 Export</button>
+      <label for="importFile" aria-label="Import data from JSON file" style="padding: 12px 30px; background: rgba(255, 152, 0, 0.9); color: white; border: none; border-radius: 10px; cursor: pointer; font-family: 'Orbitron', sans-serif; display: inline-block;">📤 Import</label>
+      <input type="file" id="importFile" accept=".json" onchange="importData(event)" aria-label="Select JSON file to import" style="display: none;">
+    </div>
+  </div>
 </div>
 <div class="container">
   <h1>🏃‍♂️ Running Progress Tracker</h1>
 
-  <div class="input-section">
+  <div class="input-section" role="form" aria-label="Running goal inputs">
     <div class="input-group">
       <label for="totalKm" id="totalKmLabel">Total KM Goal for 2025:</label>
-      <input type="number" id="totalKm" placeholder="e.g., 2000" min="0" step="0.1" value="2000">
+      <input type="number" id="totalKm" placeholder="e.g., 2000" min="0" step="0.1" value="2000"
+             aria-label="Total kilometer goal for the year" aria-describedby="totalKmLabel">
     </div>
     <div class="input-group">
       <label for="currentKm">KM Completed So Far:</label>
-      <input type="number" id="currentKm" placeholder="e.g., 850" min="0" step="0.1">
+      <input type="number" id="currentKm" placeholder="e.g., 850" min="0" step="0.1"
+             aria-label="Kilometers completed so far">
     </div>
   </div>
 
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-value" id="weeklyNeeded">0</div>
+  <div class="stats-grid" role="region" aria-label="Running statistics">
+    <div class="stat-card" role="status" aria-label="Weekly kilometers needed">
+      <div class="stat-value" id="weeklyNeeded" aria-live="polite">0</div>
       <div class="stat-label">KM/Week Needed</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value" id="weeksLeft">0</div>
+    <div class="stat-card" role="status" aria-label="Weeks remaining in year">
+      <div class="stat-value" id="weeksLeft" aria-live="polite">0</div>
       <div class="stat-label">Weeks Remaining</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value" id="kmBehindAhead">0</div>
+    <div class="stat-card" role="status" aria-label="Progress status">
+      <div class="stat-value" id="kmBehindAhead" aria-live="polite">0</div>
       <div class="stat-label" id="behindAheadLabel">Status</div>
     </div>
+    <div class="stat-card" role="status" aria-label="Days into current week">
+      <div class="stat-value" id="daysInWeek" aria-live="polite">-</div>
+      <div class="stat-label">Days in Current Week</div>
+    </div>
+    <div class="stat-card" role="status" aria-label="Weekly consistency score">
+      <div class="stat-value" id="consistency" aria-live="polite">0%</div>
+      <div class="stat-label">Consistency Score</div>
+    </div>
+    <div class="stat-card" role="status" aria-label="Current weekly streak">
+      <div class="stat-value" id="currentStreak" aria-live="polite">0</div>
+      <div class="stat-label">Week Streak</div>
+    </div>
   </div>
 
-  <div class="progress-section">
-    <div class="progress-title">Overall Progress</div>
-    <div class="progress-bar-container">
+  <div id="motivationMessage" class="motivation-message" style="display: none;" role="status" aria-live="polite"></div>
+
+  <div class="progress-section" role="region" aria-label="Overall progress towards goal">
+    <div class="progress-title" id="overallProgressTitle">Overall Progress</div>
+    <div class="progress-bar-container" role="progressbar"
+         aria-labelledby="overallProgressTitle"
+         aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+         aria-describedby="overallProgressText">
       <div class="progress-bar" id="overallProgress"></div>
       <div class="progress-text" id="overallProgressText">0%</div>
+      <div class="milestone-marker" style="left: 25%;" aria-hidden="true"><div class="milestone-label">25%</div></div>
+      <div class="milestone-marker" style="left: 50%;" aria-hidden="true"><div class="milestone-label">50%</div></div>
+      <div class="milestone-marker" style="left: 75%;" aria-hidden="true"><div class="milestone-label">75%</div></div>
     </div>
   </div>
 
-  <div class="weekly-progress">
+  <div class="weekly-progress" role="region" aria-label="Weekly distance breakdown">
     <div class="weekly-title">Weekly Distance</div>
     <div style="height: 300px; margin-top: 20px;">
-      <canvas id="weeklyDistanceChart"></canvas>
+      <canvas id="weeklyDistanceChart" role="img" aria-label="Bar chart showing individual weekly distances with dynamic targets"></canvas>
     </div>
-    <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="weeklyDistanceDetails"></div>
+    <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="weeklyDistanceDetails" role="status"></div>
   </div>
 
-  <div class="weekly-progress">
-    <div class="weekly-title">Weekly Progress vs Original Plan</div>
-    <div class="weekly-bar-container">
+  <div class="weekly-progress" role="region" aria-label="Weekly progress tracking">
+    <div class="weekly-title" id="weeklyProgressTitle">Weekly Progress vs Original Plan</div>
+    <div class="weekly-bar-container" role="progressbar"
+         aria-labelledby="weeklyProgressTitle"
+         aria-valuenow="0" aria-valuemin="0" aria-valuemax="150"
+         aria-describedby="weeklyProgressText">
       <div class="weekly-bar" id="weeklyProgress"></div>
       <div class="weekly-text" id="weeklyProgressText">0%</div>
     </div>
-    <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="weeklyDetails"></div>
+    <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="weeklyDetails" role="status"></div>
     <div style="height: 300px; margin-top: 20px;">
-      <canvas id="weeklyChart"></canvas>
+      <canvas id="weeklyChart" role="img" aria-label="Chart showing cumulative weekly progress versus original plan"></canvas>
     </div>
   </div>
 
-  <div class="weekly-progress">
+  <div class="weekly-progress" role="region" aria-label="Weekly distance gap analysis">
     <div class="weekly-title">Weekly Distance Gap</div>
     <div style="height: 300px; margin-top: 20px;">
-      <canvas id="gapChart"></canvas>
+      <canvas id="gapChart" role="img" aria-label="Bar chart showing how far ahead or behind schedule you are each week"></canvas>
     </div>
-    <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="gapDetails"></div>
+    <div style="margin-top: 10px; color: #666; font-size: 0.9em;" id="gapDetails" role="status"></div>
   </div>
 </div>
 <div class="signature">chipset508 vibe coding 6/2025</div>
@@ -775,9 +979,13 @@
 
 		document.getElementById('overallProgress').style.width = clampedOverallProgress + '%';
 		document.getElementById('overallProgressText').textContent = Math.max(0, overallProgress).toFixed(1) + '%';
+		// Update ARIA attributes for accessibility
+		document.querySelector('.progress-bar-container').setAttribute('aria-valuenow', Math.max(0, overallProgress).toFixed(1));
 
 		document.getElementById('weeklyProgress').style.width = (clampedWeeklyProgress / 150) * 100 + '%';
 		document.getElementById('weeklyProgressText').textContent = Math.max(0, weeklyProgress).toFixed(1) + '%';
+		// Update ARIA attributes for accessibility
+		document.querySelectorAll('.weekly-bar-container')[0].setAttribute('aria-valuenow', Math.max(0, weeklyProgress).toFixed(1));
 
 		// Update weekly details
 		const currentWeek = Math.max(1, weeksPassed + 1);
@@ -808,12 +1016,121 @@
 			weeklyBar.style.background = 'linear-gradient(90deg, #FF9800, #FF5722)';
 		}
 
+		// Calculate enhanced metrics
+		calculateEnhancedMetrics(now, weeksPassed, originalWeeklyTarget);
+
+		// Update motivational message
+		updateMotivationalMessage(overallProgress, weeklyProgress, difference);
+
 		// Update the weekly chart
 		updateWeeklyChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget, currentKm);
 		// Update the gap chart
 		updateGapChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget);
 		// Update the weekly distance chart
 		updateWeeklyDistanceChart(weeksPassed, totalWeeksInYear, originalWeeklyTarget, currentKm);
+	}
+
+	function updateMotivationalMessage(overallProgress, weeklyProgress, difference) {
+		const messageDiv = document.getElementById('motivationMessage');
+		let message = '';
+		let emoji = '';
+
+		// Goal completed!
+		if (overallProgress >= 100) {
+			emoji = '🎉';
+			message = 'Congratulations! You\'ve crushed your goal! Time to celebrate your amazing achievement!';
+		}
+		// Close to goal (90-99%)
+		else if (overallProgress >= 90) {
+			emoji = '🔥';
+			message = 'Almost there! The finish line is in sight. Keep pushing, you\'re incredible!';
+		}
+		// Three quarters done (75-89%)
+		else if (overallProgress >= 75) {
+			emoji = '💪';
+			message = 'You\'re in the home stretch! Three quarters done - you\'re unstoppable!';
+		}
+		// Halfway there (50-74%)
+		else if (overallProgress >= 50) {
+			emoji = '⭐';
+			message = 'Halfway champion! Your consistency is paying off. Keep up the amazing work!';
+		}
+		// Quarter done (25-49%)
+		else if (overallProgress >= 25) {
+			emoji = '🚀';
+			message = 'Great start! You\'re building momentum. Every kilometer counts!';
+		}
+		// Just starting (0-24%)
+		else {
+			emoji = '💚';
+			message = 'Every journey begins with a single step. You\'ve got this!';
+		}
+
+		// Special messages based on being ahead/behind
+		if (difference > 20) {
+			emoji = '👑';
+			message = 'Wow! You\'re way ahead of schedule! Absolutely crushing it!';
+		} else if (difference > 0 && weeklyProgress >= 100) {
+			emoji = '⚡';
+			message += ' You\'re ahead of schedule - keep riding this wave!';
+		} else if (difference < -20 && overallProgress < 90) {
+			emoji = '💪';
+			message = 'Behind schedule? No worries! Consistency beats perfection. You can do this!';
+		}
+
+		messageDiv.innerHTML = `${emoji} ${message}`;
+		messageDiv.style.display = 'block';
+	}
+
+	function calculateEnhancedMetrics(now, weeksPassed, weeklyTarget) {
+		// Days in current week
+		const dayOfWeek = now.getDay();
+		const daysIntoWeek = dayOfWeek === 0 ? 7 : dayOfWeek; // Sunday = 7
+		document.getElementById('daysInWeek').textContent = daysIntoWeek;
+
+		// Consistency score and streak
+		if (window.weeklyProgressData && window.weeklyProgressData.length > 0) {
+			let consistency = 0;
+			let currentStreak = 0;
+			let streakActive = true;
+
+			// Calculate individual week distances and check against target
+			for (let i = 0; i <= Math.min(weeksPassed, 51); i++) {
+				const weekDistance = i === 0 ? window.weeklyProgressData[i] :
+					window.weeklyProgressData[i] - window.weeklyProgressData[i - 1];
+
+				const metTarget = weekDistance >= weeklyTarget;
+
+				if (metTarget) {
+					consistency++;
+					if (streakActive) {
+						currentStreak++;
+					}
+				} else {
+					streakActive = false;
+				}
+			}
+
+			const totalWeeks = Math.max(1, weeksPassed + 1);
+			const consistencyPercent = ((consistency / totalWeeks) * 100).toFixed(0);
+			document.getElementById('consistency').textContent = consistencyPercent + '%';
+			document.getElementById('currentStreak').textContent = currentStreak;
+
+			// Color code consistency
+			const consistencyCard = document.getElementById('consistency').parentElement;
+			if (consistencyPercent >= 80) {
+				consistencyCard.style.background = 'linear-gradient(135deg, #4CAF50, #8BC34A)';
+			} else if (consistencyPercent >= 60) {
+				consistencyCard.style.background = 'linear-gradient(135deg, #8BC34A, #CDDC39)';
+			} else if (consistencyPercent >= 40) {
+				consistencyCard.style.background = 'linear-gradient(135deg, #CDDC39, #FFC107)';
+			} else {
+				consistencyCard.style.background = 'linear-gradient(135deg, #FF9800, #FF5722)';
+			}
+		} else {
+			document.getElementById('consistency').textContent = '0%';
+			document.getElementById('currentStreak').textContent = '0';
+		}
 	}
 
 	function updateWeeklyChart(weeksPassed, totalWeeks, weeklyTarget, currentKm) {
@@ -845,6 +1162,10 @@
 			index <= weeksPassed ? value : null
 		);
 
+		// Add "today" marker dataset
+		const todayMarker = Array(totalWeeks).fill(null);
+		todayMarker[weeksPassed] = actualData[weeksPassed];
+
 		// Create new chart
 		weeklyChart = new Chart(ctx, {
 			type: 'line',
@@ -869,6 +1190,16 @@
 						fill: false,
 						tension: 0.4,
 						spanGaps: true
+					},
+					{
+						label: 'Current Week',
+						data: todayMarker,
+						borderColor: 'rgba(76, 175, 80, 1)',
+						backgroundColor: 'rgba(76, 175, 80, 0.3)',
+						pointRadius: 8,
+						pointHoverRadius: 10,
+						borderWidth: 3,
+						showLine: false
 					}
 				]
 			},
@@ -891,7 +1222,15 @@
 						titleColor: '#fff',
 						bodyColor: '#fff',
 						borderColor: 'rgba(255, 255, 255, 0.2)',
-						borderWidth: 1
+						borderWidth: 1,
+						callbacks: {
+							title: function(context) {
+								const weekNum = context[0].dataIndex;
+								const currentYear = new Date().getFullYear();
+								const dateRange = getWeekDateRange(weekNum, currentYear);
+								return `Week ${weekNum + 1}: ${dateRange}`;
+							}
+						}
 					},
 					zoom: {
 						pan: {
@@ -988,6 +1327,15 @@
 			}
 		});
 
+		// Highlight current week with thicker border
+		const borderWidths = gaps.map((_, index) => index === weeksPassed ? 3 : 1);
+		const borderColors = gaps.map((gap, index) => {
+			if (index === weeksPassed) {
+				return 'rgba(255, 255, 255, 1)'; // White border for current week
+			}
+			return gap >= 0 ? 'rgba(76, 175, 80, 1)' : 'rgba(244, 67, 54, 1)';
+		});
+
 		// Create new chart
 		gapChart = new Chart(ctx, {
 			type: 'bar',
@@ -997,8 +1345,8 @@
 					label: 'Distance Gap (km)',
 					data: gaps,
 					backgroundColor: colors,
-					borderColor: colors.map(color => color.replace('0.8', '1')),
-					borderWidth: 1,
+					borderColor: borderColors,
+					borderWidth: borderWidths,
 					borderRadius: 4
 				}]
 			},
@@ -1018,10 +1366,16 @@
 						borderColor: 'rgba(255, 255, 255, 0.2)',
 						borderWidth: 1,
 						callbacks: {
+							title: function(context) {
+								const weekNum = context[0].dataIndex;
+								const currentYear = new Date().getFullYear();
+								const dateRange = getWeekDateRange(weekNum, currentYear);
+								return `Week ${weekNum + 1}: ${dateRange}`;
+							},
 							label: function(context) {
 								const value = context.parsed.y;
 								const status = value >= 0 ? 'ahead' : 'behind';
-								return `Week ${context.dataIndex + 1}: ${Math.abs(value).toFixed(1)} km ${status}`;
+								return `${Math.abs(value).toFixed(1)} km ${status}`;
 							}
 						}
 					},
@@ -1160,6 +1514,15 @@
 			}
 		});
 
+		// Highlight current week with thicker border
+		const borderWidths = weeklyDistances.map((_, index) => index === weeksPassed ? 3 : 1);
+		const borderColors = weeklyDistances.map((distance, index) => {
+			if (index === weeksPassed) {
+				return 'rgba(255, 255, 255, 1)'; // White border for current week
+			}
+			return colors[index].replace('0.8', '1');
+		});
+
 		// Create new chart
 		weeklyDistanceChart = new Chart(ctx, {
 			type: 'bar',
@@ -1170,8 +1533,8 @@
 						label: 'Weekly Distance (km)',
 						data: weeklyDistances,
 						backgroundColor: colors,
-						borderColor: colors.map(color => color.replace('0.8', '1')),
-						borderWidth: 1,
+						borderColor: borderColors,
+						borderWidth: borderWidths,
 						borderRadius: 4
 					},
 					{
@@ -1209,12 +1572,18 @@
 						borderColor: 'rgba(255, 255, 255, 0.2)',
 						borderWidth: 1,
 						callbacks: {
+							title: function(context) {
+								const weekNum = context[0].dataIndex;
+								const currentYear = new Date().getFullYear();
+								const dateRange = getWeekDateRange(weekNum, currentYear);
+								return `Week ${weekNum + 1}: ${dateRange}`;
+							},
 							label: function(context) {
 								if (context.datasetIndex === 0) {
 									const distance = context.parsed.y;
 									const target = targetLine[context.dataIndex];
 									const percentage = ((distance / target) * 100).toFixed(1);
-									return `Week ${context.dataIndex + 1}: ${distance.toFixed(1)} km (${percentage}% of target)`;
+									return `Distance: ${distance.toFixed(1)} km (${percentage}% of target)`;
 								} else {
 									const target = context.parsed.y;
 									return `Dynamic Target: ${target.toFixed(1)} km`;
@@ -1358,16 +1727,32 @@
 		}
 	}
 
+	// Debounce function to limit how often a function can run
+	function debounce(func, wait) {
+		let timeout;
+		return function executedFunction(...args) {
+			const later = () => {
+				clearTimeout(timeout);
+				func(...args);
+			};
+			clearTimeout(timeout);
+			timeout = setTimeout(later, wait);
+		};
+	}
+
+	// Create debounced version of calculateProgress (300ms delay)
+	const debouncedCalculateProgress = debounce(calculateProgress, 300);
+
 	// Add event listeners
 	document.getElementById('totalKm').addEventListener('input', function() {
 		validateInput(this);
 		saveToLocalStorage();
-		calculateProgress();
+		debouncedCalculateProgress();
 	});
 	document.getElementById('currentKm').addEventListener('input', function() {
 		validateInput(this);
 		saveToLocalStorage();
-		calculateProgress();
+		debouncedCalculateProgress();
 	});
 
 	// Initial setup
@@ -1433,6 +1818,57 @@
 		});
 	}
 
+	// Show user-friendly error messages
+	function showError(message, details = '') {
+		const errorDiv = document.createElement('div');
+		errorDiv.style.cssText = 'position: fixed; top: 80px; right: 20px; background: rgba(244, 67, 54, 0.95); color: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; max-width: 400px; font-family: Orbitron, sans-serif; font-size: 0.9em;';
+		errorDiv.innerHTML = `<strong>Error:</strong> ${message}${details ? '<br><small>' + details + '</small>' : ''}`;
+		document.body.appendChild(errorDiv);
+		setTimeout(() => errorDiv.remove(), 5000);
+	}
+
+	// Retry function for failed API calls
+	async function retryFetch(fetchFn, retries = 3, delay = 1000) {
+		for (let i = 0; i < retries; i++) {
+			try {
+				return await fetchFn();
+			} catch (error) {
+				if (i === retries - 1) throw error;
+				await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+			}
+		}
+	}
+
+	// Update sync status display
+	function updateSyncStatus() {
+		const syncStatus = document.getElementById('syncStatus');
+		const timestamp = localStorage.getItem('strava_weekly_progress_timestamp');
+
+		if (timestamp) {
+			const lastSync = new Date(parseInt(timestamp));
+			const now = new Date();
+			const diffMinutes = Math.floor((now - lastSync) / (1000 * 60));
+
+			let timeAgo;
+			if (diffMinutes < 1) {
+				timeAgo = 'just now';
+			} else if (diffMinutes < 60) {
+				timeAgo = `${diffMinutes}m ago`;
+			} else if (diffMinutes < 1440) {
+				const hours = Math.floor(diffMinutes / 60);
+				timeAgo = `${hours}h ago`;
+			} else {
+				const days = Math.floor(diffMinutes / 1440);
+				timeAgo = `${days}d ago`;
+			}
+
+			syncStatus.textContent = `Last synced: ${timeAgo}`;
+			syncStatus.style.display = 'block';
+		} else {
+			syncStatus.style.display = 'none';
+		}
+	}
+
 	function updateStravaButton(connected, loading = false) {
 		const stravaConnect = document.getElementById('stravaConnect');
 		stravaConnect.className = 'strava-connect';
@@ -1442,9 +1878,16 @@
 			stravaConnect.innerHTML = '<img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava"> Loading...';
 		} else if (connected) {
 			stravaConnect.classList.add('strava-connected');
-			stravaConnect.innerHTML = '<img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava"> Connected to Strava';
+			stravaConnect.innerHTML = '<img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava"> 🔄 Refresh Data';
 		} else {
 			stravaConnect.innerHTML = '<img src="https://images.icon-icons.com/2429/PNG/512/strava_logo_icon_147232.png" alt="Strava"> Connect with Strava';
+		}
+
+		// Update sync status when button state changes
+		if (connected) {
+			updateSyncStatus();
+			// Update sync status every minute
+			setInterval(updateSyncStatus, 60000);
 		}
 	}
 
@@ -1484,8 +1927,12 @@
 			await fetchStravaData(data.access_token);
 		} catch (error) {
 			console.error('Error during Strava authentication:', error);
-			alert('Failed to connect with Strava: ' + error.message);
+			showError('Failed to connect with Strava', error.message);
 			updateStravaButton(false);
+			// Clear any stored tokens on auth failure
+			localStorage.removeItem('strava_access_token');
+			localStorage.removeItem('strava_refresh_token');
+			localStorage.removeItem('strava_token_expiry');
 		}
 	}
 
@@ -1513,15 +1960,23 @@
 			const startOfYear = new Date(currentYear, 0, 1).getTime() / 1000;
 			const endOfYear = new Date(currentYear, 11, 31).getTime() / 1000;
 
-			const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?after=${startOfYear}&before=${endOfYear}&per_page=200`, {
-				headers: {
-					'Authorization': `Bearer ${accessToken}`
-				}
-			});
+			const response = await retryFetch(async () => {
+				const res = await fetch(`https://www.strava.com/api/v3/athlete/activities?after=${startOfYear}&before=${endOfYear}&per_page=200`, {
+					headers: {
+						'Authorization': `Bearer ${accessToken}`
+					}
+				});
 
-			if (!response.ok) {
-				throw new Error('Failed to fetch Strava data');
-			}
+				if (!response.ok) {
+					if (res.status === 401) {
+						throw new Error('Strava authentication expired. Please reconnect.');
+					} else if (res.status === 429) {
+						throw new Error('Strava rate limit exceeded. Please try again later.');
+					}
+					throw new Error(`Strava API error: ${res.status} ${res.statusText}`);
+				}
+				return res;
+			});
 
 			const activities = await response.json();
 			const runningActivities = activities.filter(activity => activity.type === 'Run');
@@ -1557,10 +2012,19 @@
 
 			calculateProgress();
 			updateStravaButton(true);
+			updateSyncStatus();
 		} catch (error) {
 			console.error('Error fetching Strava data:', error);
-			alert('Failed to fetch Strava data. Please try again.');
+			showError('Failed to fetch Strava data', error.message);
 			updateStravaButton(true);
+
+			// If token expired, clear stored tokens
+			if (error.message.includes('expired') || error.message.includes('401')) {
+				localStorage.removeItem('strava_access_token');
+				localStorage.removeItem('strava_refresh_token');
+				localStorage.removeItem('strava_token_expiry');
+				updateStravaButton(false);
+			}
 		}
 	}
 
@@ -1569,6 +2033,208 @@
 		localStorage.removeItem('strava_weekly_progress');
 		localStorage.removeItem('strava_weekly_progress_timestamp');
 	}
+
+	// Get date range for a week number
+	function getWeekDateRange(weekNumber, year) {
+		const yearStart = new Date(year, 0, 1);
+		const firstMonday = getNextMonday(yearStart);
+
+		let weekStart;
+		if (weekNumber === 0) {
+			weekStart = yearStart;
+		} else {
+			weekStart = new Date(firstMonday);
+			weekStart.setDate(firstMonday.getDate() + (weekNumber - 1) * 7);
+		}
+
+		const weekEnd = new Date(weekStart);
+		if (weekNumber === 0) {
+			weekEnd.setDate(firstMonday.getDate() - 1);
+		} else {
+			weekEnd.setDate(weekStart.getDate() + 6);
+		}
+
+		const formatDate = (d) => {
+			const month = d.toLocaleString('default', { month: 'short' });
+			return `${month} ${d.getDate()}`;
+		};
+
+		return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+	}
+
+	// Close modal
+	function closeModal() {
+		document.getElementById('editModal').classList.remove('active');
+	}
+
+	// Keyboard navigation for modal
+	document.addEventListener('keydown', function(e) {
+		const modal = document.getElementById('editModal');
+		if (e.key === 'Escape' && modal.classList.contains('active')) {
+			closeModal();
+		}
+	});
+
+	// Trap focus in modal when open
+	document.getElementById('editModal').addEventListener('keydown', function(e) {
+		if (e.key === 'Tab') {
+			const focusableElements = this.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])');
+			const firstElement = focusableElements[0];
+			const lastElement = focusableElements[focusableElements.length - 1];
+
+			if (e.shiftKey && document.activeElement === firstElement) {
+				e.preventDefault();
+				lastElement.focus();
+			} else if (!e.shiftKey && document.activeElement === lastElement) {
+				e.preventDefault();
+				firstElement.focus();
+			}
+		}
+	});
+
+	// Open manual data editor
+	function openDataEditor() {
+		const modal = document.getElementById('editModal');
+		const container = document.getElementById('weekEditorContainer');
+		container.innerHTML = '';
+
+		const currentYear = new Date().getFullYear();
+		const now = new Date();
+		const yearStart = new Date(currentYear, 0, 1);
+		const currentWeek = getWeekNumber(now, yearStart);
+
+		// Get existing data or create empty array
+		const weeklyData = window.weeklyProgressData || new Array(52).fill(0);
+
+		// Calculate individual week distances from cumulative data
+		const individualWeekDistances = [];
+		for (let i = 0; i <= Math.min(currentWeek, 51); i++) {
+			const distance = i === 0 ? weeklyData[i] : weeklyData[i] - weeklyData[i - 1];
+			individualWeekDistances.push(distance || 0);
+		}
+
+		// Create input for each week up to current week
+		for (let i = 0; i <= Math.min(currentWeek, 51); i++) {
+			const weekDiv = document.createElement('div');
+			weekDiv.className = 'week-editor';
+
+			const dateRange = getWeekDateRange(i, currentYear);
+
+			weekDiv.innerHTML = `
+				<div class="week-label">Week ${i + 1}</div>
+				<input type="number" class="week-input" id="week_${i}" value="${individualWeekDistances[i].toFixed(1)}" min="0" step="0.1">
+				<div class="week-date-range">${dateRange}</div>
+			`;
+
+			container.appendChild(weekDiv);
+		}
+
+		modal.classList.add('active');
+	}
+
+	// Export data as JSON
+	function exportData() {
+		const data = {
+			totalKm: document.getElementById('totalKm').value,
+			currentKm: document.getElementById('currentKm').value,
+			weeklyProgressData: window.weeklyProgressData || [],
+			exportDate: new Date().toISOString(),
+			year: new Date().getFullYear()
+		};
+
+		const dataStr = JSON.stringify(data, null, 2);
+		const dataBlob = new Blob([dataStr], { type: 'application/json' });
+		const url = URL.createObjectURL(dataBlob);
+
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = `running-tracker-${data.year}-${new Date().toISOString().split('T')[0]}.json`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+	}
+
+	// Import data from JSON
+	function importData(event) {
+		const file = event.target.files[0];
+		if (!file) return;
+
+		const reader = new FileReader();
+		reader.onload = function(e) {
+			try {
+				const data = JSON.parse(e.target.result);
+
+				// Validate data structure
+				if (!data.weeklyProgressData || !Array.isArray(data.weeklyProgressData)) {
+					throw new Error('Invalid data format');
+				}
+
+				// Import the data
+				document.getElementById('totalKm').value = data.totalKm || 2000;
+				document.getElementById('currentKm').value = data.currentKm || 0;
+				window.weeklyProgressData = data.weeklyProgressData;
+
+				// Store in localStorage
+				localStorage.setItem('runningTracker_totalKm', data.totalKm || 2000);
+				localStorage.setItem('runningTracker_currentKm', data.currentKm || 0);
+				localStorage.setItem('strava_weekly_progress', JSON.stringify(data.weeklyProgressData));
+				localStorage.setItem('strava_weekly_progress_timestamp', new Date().getTime().toString());
+
+				// Recalculate and close modal
+				calculateProgress();
+				document.getElementById('editModal').classList.remove('active');
+				updateSyncStatus();
+
+				alert('Data imported successfully!');
+			} catch (error) {
+				alert('Error importing data: ' + error.message);
+			}
+		};
+		reader.readAsText(file);
+
+		// Reset file input
+		event.target.value = '';
+	}
+
+	// Save manually entered data
+	function saveManualData() {
+		const currentYear = new Date().getFullYear();
+		const now = new Date();
+		const yearStart = new Date(currentYear, 0, 1);
+		const currentWeek = getWeekNumber(now, yearStart);
+
+		// Collect individual week distances
+		const individualWeekDistances = [];
+		for (let i = 0; i <= Math.min(currentWeek, 51); i++) {
+			const input = document.getElementById(`week_${i}`);
+			individualWeekDistances.push(parseFloat(input.value) || 0);
+		}
+
+		// Convert to cumulative
+		let cumulative = 0;
+		const cumulativeData = new Array(52).fill(0);
+		for (let i = 0; i < individualWeekDistances.length; i++) {
+			cumulative += individualWeekDistances[i];
+			cumulativeData[i] = cumulative;
+		}
+
+		// Store the data
+		window.weeklyProgressData = cumulativeData;
+		localStorage.setItem('strava_weekly_progress', JSON.stringify(cumulativeData));
+		localStorage.setItem('strava_weekly_progress_timestamp', new Date().getTime().toString());
+
+		// Update current KM
+		document.getElementById('currentKm').value = cumulative.toFixed(1);
+
+		// Recalculate and close modal
+		calculateProgress();
+		document.getElementById('editModal').classList.remove('active');
+		updateSyncStatus();
+	}
+
+	// Add edit data button listener
+	document.getElementById('editDataButton').addEventListener('click', openDataEditor);
 
 	// Initialize Strava integration
 	initStravaIntegration();
