@@ -690,6 +690,34 @@
 	let gapChart = null;
 	let weeklyDistanceChart = null;
 
+	// Helper function to get the first Monday on or after a date (or the date itself if it's Monday)
+	function getNextMonday(date) {
+		const d = new Date(date);
+		const day = d.getDay();
+		// If Sunday (0), add 1 day; if Monday (1), add 0; if Tuesday (2), add 6 days, etc.
+		const daysUntilMonday = day === 0 ? 1 : day === 1 ? 0 : 8 - day;
+		d.setDate(d.getDate() + daysUntilMonday);
+		return d;
+	}
+
+	// Helper function to get week number within the year (0-indexed)
+	// Week 0 starts on Jan 1 and ends on the first Sunday
+	// Week 1 starts on the first Monday and ends on the next Sunday, etc.
+	function getWeekNumber(date, yearStart) {
+		// Find the first Monday of the year (on or after Jan 1)
+		const firstMonday = getNextMonday(yearStart);
+
+		// If date is before the first Monday, it's in Week 0 (partial week)
+		if (date < firstMonday) {
+			return 0;
+		}
+
+		// Calculate weeks from first Monday
+		const diffTime = date - firstMonday;
+		const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+		return diffWeeks + 1; // +1 because Week 0 is before the first Monday
+	}
+
 	function calculateProgress() {
 		const totalKm = Math.max(0, parseFloat(document.getElementById('totalKm').value) || 0);
 		const currentKm = Math.max(0, parseFloat(document.getElementById('currentKm').value) || 0);
@@ -704,11 +732,11 @@
 		const startOfYear = new Date(now.getFullYear(), 0, 1);
 		const endOfYear = new Date(now.getFullYear(), 11, 31);
 
-		// Calculate weeks passed and remaining
-		const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-		const weeksPassed = Math.max(0, Math.floor((now - startOfYear) / msPerWeek));
-		const totalWeeksInYear = Math.ceil((endOfYear - startOfYear) / msPerWeek);
-		const weeksRemaining = Math.max(0, totalWeeksInYear - weeksPassed);
+		// Calculate weeks passed and remaining (using Monday-Sunday week definition)
+		const weeksPassed = getWeekNumber(now, startOfYear);
+		const lastWeekOfYear = getWeekNumber(endOfYear, startOfYear);
+		const totalWeeksInYear = lastWeekOfYear + 1; // +1 because week numbers are 0-indexed
+		const weeksRemaining = Math.max(0, totalWeeksInYear - weeksPassed); // Includes current week
 
 		// Calculate original weekly target (total km / total weeks)
 		const originalWeeklyTarget = totalWeeksInYear > 0 ? Math.max(0, totalKm / totalWeeksInYear) : 0;
@@ -943,7 +971,7 @@
 		const labels = [];
 
 		for (let week = 0; week <= Math.min(weeksPassed, 51); week++) {
-			const expectedDistance = weeklyTarget * week;
+			const expectedDistance = weeklyTarget * (week + 1); // Cumulative expected distance after (week + 1) weeks
 			const actualDistance = window.weeklyProgressData[week] || 0;
 			const gap = actualDistance - expectedDistance;
 
@@ -1499,10 +1527,11 @@
 			const runningActivities = activities.filter(activity => activity.type === 'Run');
 
 			// Calculate weekly progress
+			const yearStart = new Date(currentYear, 0, 1);
 			const weeklyProgress = new Array(52).fill(0);
 			runningActivities.forEach(activity => {
 				const activityDate = new Date(activity.start_date);
-				const weekNumber = Math.floor((activityDate - new Date(currentYear, 0, 1)) / (7 * 24 * 60 * 60 * 1000));
+				const weekNumber = getWeekNumber(activityDate, yearStart);
 				if (weekNumber >= 0 && weekNumber < 52) {
 					weeklyProgress[weekNumber] += activity.distance / 1000; // Convert to km
 				}
