@@ -1153,12 +1153,15 @@
 		// Show chart container
 		chartContainer.style.display = 'block';
 
-		// Prepare data
-		const labels = Array.from({length: totalWeeks}, (_, i) => `Week ${i + 1}`);
-		const plannedData = Array.from({length: totalWeeks}, (_, i) => weeklyTarget * (i + 1));
+		// Only show data up to current week + 2 weeks ahead for context
+		const weeksToShow = Math.min(weeksPassed + 3, totalWeeks);
+
+		// Prepare data (only for weeks to show)
+		const labels = Array.from({length: weeksToShow}, (_, i) => `Week ${i + 1}`);
+		const plannedData = Array.from({length: weeksToShow}, (_, i) => weeklyTarget * (i + 1));
 
 		// Use stored weekly progress data
-		const actualData = window.weeklyProgressData.map((value, index) =>
+		const actualData = window.weeklyProgressData.slice(0, weeksToShow).map((value, index) =>
 			index <= weeksPassed ? value : null
 		);
 
@@ -1178,7 +1181,7 @@
 		const isAhead = currentProgress >= plannedProgress;
 
 		// Add "today" marker dataset
-		const todayMarker = Array(totalWeeks).fill(null);
+		const todayMarker = Array(weeksToShow).fill(null);
 		todayMarker[weeksPassed] = actualData[weeksPassed];
 
 		// Create new chart with area fill
