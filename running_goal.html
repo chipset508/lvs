@@ -865,7 +865,7 @@
   </div>
 
   <div class="weekly-progress" role="region" aria-label="Weekly progress tracking">
-    <div class="weekly-title" id="weeklyProgressTitle">Weekly Progress vs Original Plan</div>
+    <div class="weekly-title" id="weeklyProgressTitle">📈 Cumulative Progress - Target vs Actual</div>
     <div class="weekly-bar-container" role="progressbar"
          aria-labelledby="weeklyProgressTitle"
          aria-valuenow="0" aria-valuemin="0" aria-valuemax="150"
@@ -1162,44 +1162,68 @@
 			index <= weeksPassed ? value : null
 		);
 
+		// Create gradient for when ahead
+		const gradientAhead = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+		gradientAhead.addColorStop(0, 'rgba(76, 175, 80, 0.4)');
+		gradientAhead.addColorStop(1, 'rgba(76, 175, 80, 0.05)');
+
+		// Create gradient for when behind
+		const gradientBehind = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+		gradientBehind.addColorStop(0, 'rgba(244, 67, 54, 0.4)');
+		gradientBehind.addColorStop(1, 'rgba(244, 67, 54, 0.05)');
+
+		// Determine if currently ahead or behind
+		const currentProgress = actualData[weeksPassed] || 0;
+		const plannedProgress = plannedData[weeksPassed] || 0;
+		const isAhead = currentProgress >= plannedProgress;
+
 		// Add "today" marker dataset
 		const todayMarker = Array(totalWeeks).fill(null);
 		todayMarker[weeksPassed] = actualData[weeksPassed];
 
-		// Create new chart
+		// Create new chart with area fill
 		weeklyChart = new Chart(ctx, {
 			type: 'line',
 			data: {
 				labels: labels,
 				datasets: [
 					{
-						label: 'Original Plan',
+						label: 'Target Line',
 						data: plannedData,
-						borderColor: 'rgba(0, 180, 216, 0.8)',
-						backgroundColor: 'rgba(0, 180, 216, 0.1)',
+						borderColor: 'rgba(100, 100, 100, 0.4)',
+						backgroundColor: 'transparent',
 						borderWidth: 2,
+						borderDash: [5, 5],
 						fill: false,
-						tension: 0.4
+						tension: 0,
+						pointRadius: 0,
+						pointHoverRadius: 4
 					},
 					{
-						label: 'Current Progress',
+						label: 'Your Progress',
 						data: actualData,
-						borderColor: 'rgba(255, 152, 0, 0.8)',
-						backgroundColor: 'rgba(255, 152, 0, 0.1)',
-						borderWidth: 2,
-						fill: false,
+						borderColor: isAhead ? 'rgba(76, 175, 80, 1)' : 'rgba(244, 67, 54, 1)',
+						backgroundColor: isAhead ? gradientAhead : gradientBehind,
+						borderWidth: 3,
+						fill: true,
 						tension: 0.4,
-						spanGaps: true
+						spanGaps: true,
+						pointRadius: 3,
+						pointHoverRadius: 6,
+						pointBackgroundColor: isAhead ? 'rgba(76, 175, 80, 1)' : 'rgba(244, 67, 54, 1)',
+						pointBorderColor: '#fff',
+						pointBorderWidth: 2
 					},
 					{
 						label: 'Current Week',
 						data: todayMarker,
-						borderColor: 'rgba(76, 175, 80, 1)',
-						backgroundColor: 'rgba(76, 175, 80, 0.3)',
-						pointRadius: 8,
-						pointHoverRadius: 10,
+						borderColor: 'rgba(255, 215, 0, 1)',
+						backgroundColor: 'rgba(255, 215, 0, 0.5)',
+						pointRadius: 10,
+						pointHoverRadius: 12,
 						borderWidth: 3,
-						showLine: false
+						showLine: false,
+						pointStyle: 'star'
 					}
 				]
 			},
@@ -1218,17 +1242,32 @@
 					tooltip: {
 						mode: 'index',
 						intersect: false,
-						backgroundColor: 'rgba(0, 0, 0, 0.8)',
+						backgroundColor: 'rgba(0, 0, 0, 0.9)',
 						titleColor: '#fff',
 						bodyColor: '#fff',
 						borderColor: 'rgba(255, 255, 255, 0.2)',
 						borderWidth: 1,
+						padding: 12,
 						callbacks: {
 							title: function(context) {
 								const weekNum = context[0].dataIndex;
 								const currentYear = new Date().getFullYear();
 								const dateRange = getWeekDateRange(weekNum, currentYear);
 								return `Week ${weekNum + 1}: ${dateRange}`;
+							},
+							afterBody: function(context) {
+								const weekNum = context[0].dataIndex;
+								const actual = window.weeklyProgressData[weekNum] || 0;
+								const planned = weeklyTarget * (weekNum + 1);
+								const gap = actual - planned;
+
+								if (gap > 0) {
+									return `\n✓ ${gap.toFixed(1)} km ahead of plan`;
+								} else if (gap < 0) {
+									return `\n⚠ ${Math.abs(gap).toFixed(1)} km behind plan`;
+								} else {
+									return '\n✓ Right on track!';
+								}
 							}
 						}
 					},
