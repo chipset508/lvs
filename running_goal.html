@@ -857,7 +857,10 @@
   </div>
 
   <div class="weekly-progress" role="region" aria-label="Weekly distance breakdown">
-    <div class="weekly-title">Weekly Distance</div>
+    <div class="weekly-title">📊 Weekly Distance vs Adjusted Target</div>
+    <div style="margin-top: 5px; margin-bottom: 15px; color: #888; font-size: 0.85em; font-style: italic;">
+      Target adjusts each week to help you reach your goal
+    </div>
     <div style="height: 300px; margin-top: 20px;">
       <canvas id="weeklyDistanceChart" role="img" aria-label="Bar chart showing individual weekly distances with dynamic targets"></canvas>
     </div>
@@ -880,7 +883,10 @@
   </div>
 
   <div class="weekly-progress" role="region" aria-label="Weekly distance gap analysis">
-    <div class="weekly-title">Weekly Distance Gap</div>
+    <div class="weekly-title">📉 Cumulative Gap vs Original Plan</div>
+    <div style="margin-top: 5px; margin-bottom: 15px; color: #888; font-size: 0.85em; font-style: italic;">
+      Shows how far ahead/behind you are compared to the original weekly target
+    </div>
     <div style="height: 300px; margin-top: 20px;">
       <canvas id="gapChart" role="img" aria-label="Bar chart showing how far ahead or behind schedule you are each week"></canvas>
     </div>
