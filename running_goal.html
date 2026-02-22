@@ -952,7 +952,9 @@
 		const originalWeeklyTarget = totalWeeksInYear > 0 ? Math.max(0, totalKm / totalWeeksInYear) : 0;
 
 		// Calculate what should have been completed by now
-		const shouldHaveCompleted = Math.max(0, originalWeeklyTarget * weeksPassed);
+		// weeksPassed is 0-indexed (week 0 = first week), so week 7 = 8th week
+		// We should compare against (weeksPassed + 1) weeks of target since we're IN that week
+		const shouldHaveCompleted = Math.max(0, originalWeeklyTarget * (weeksPassed + 1));
 
 		// Calculate weekly km needed for remaining weeks
 		const remainingKm = Math.max(0, totalKm - currentKm);
@@ -960,7 +962,7 @@
 
 		// Calculate progress percentages
 		const overallProgress = (currentKm / totalKm) * 100;
-		const weeklyProgress = weeksPassed > 0 ? (currentKm / shouldHaveCompleted) * 100 : 0;
+		const weeklyProgress = weeksPassed >= 0 ? (currentKm / shouldHaveCompleted) * 100 : 0;
 
 		// Calculate if behind or ahead
 		const difference = currentKm - shouldHaveCompleted;
