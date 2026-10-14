@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "price-tracker",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "observability": {
+    "enabled": true,
+  },
+  // Runs at the top of every hour (UTC).
+  "triggers": {
+    "crons": ["0 * * * *"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "price-tracker",
+      "database_id": "509d052e-1def-435e-8315-d378b0912108",
+      "migrations_dir": "migrations",
+    },
+  ],
+}
