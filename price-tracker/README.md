@@ -18,21 +18,20 @@ npm run dev                               # http://localhost:8787 (user: anythin
 curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+*+*+*+*"   # run the hourly check now
 ```
 
-Without the SendGrid settings below, the target still works, but alert emails are skipped and retried on the next check.
+Without the email settings below, the target still works, but alert emails are skipped and retried on the next check.
 
-## Email alerts with SendGrid Free
+## Email alerts with Resend
 
-1. Create a SendGrid account and verify a single sender address (Single Sender Verification). Sends fail until the sender is verified.
-2. Create an API key with the **Mail Send** permission.
-3. Set the three secrets. `SENDGRID_FROM` is the verified sender. `NOTIFY_TO` is the address that receives alerts.
+1. Create a Resend account and an API key with **Sending access**.
+2. Set the three secrets. `RESEND_FROM` is the sender address. `NOTIFY_TO` is the address that receives alerts.
 
 ```sh
-npx wrangler secret put SENDGRID_API_KEY
-npx wrangler secret put SENDGRID_FROM
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put RESEND_FROM   # e.g. onboarding@resend.dev
 npx wrangler secret put NOTIFY_TO
 ```
 
-For local testing, the same values can go in `.dev.vars`. Check SendGrid's current plan page for the daily email limit, because the free allowance has changed over time.
+For local testing, the same values can go in `.dev.vars`. Resend's free plan allows 3,000 emails a month and 100 a day.
 
 ## Deploy to Cloudflare Free
 
