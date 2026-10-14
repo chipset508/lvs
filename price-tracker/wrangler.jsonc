@@ -6,9 +6,9 @@
   "observability": {
     "enabled": true,
   },
-  // Runs at the top of every hour (UTC).
+  // Runs at 00:00, 04:00, 08:00, 12:00, 16:00 and 20:00 UTC.
   "triggers": {
-    "crons": ["0 * * * *"],
+    "crons": ["0 */4 * * *"],
   },
   "d1_databases": [
     {

@@ -13,6 +13,7 @@ export interface ProductView {
   last_error: string | null;
   target_price: number | null;
   alerted_at: string | null;
+  notify_email: string | null;
 }
 
 export interface HistoryView {
@@ -45,6 +46,7 @@ export function renderDetail(
   product: ProductView,
   history: HistoryView[],
 ): string {
+  const suggested = suggestedTarget(product);
   // History is stored oldest-first. Each event is compared with the one before it,
   // then the list is reversed so the newest event is on top.
   const timeline =
@@ -65,14 +67,21 @@ export function renderDetail(
   <p><a href="${escapeHtml(product.url)}" target="_blank" rel="noopener">Open product page ↗</a></p>
 </section>
 <section class="card">
-  <h2>Target price</h2>
+  <h2>Alerts</h2>
   <p>${targetStatusText(product)}</p>
-  <form class="target" method="post" action="/products/${product.id}/target">
-    <input type="number" name="target" min="1" step="1" inputmode="numeric" placeholder="e.g. 300000" value="${product.target_price ?? ""}">
-    <span class="muted">${product.currency ?? ""}</span>
+  ${suggested === null ? "" : `<p class="muted">The target field is pre-filled with a suggestion, 15% below the current price. Save to use it.</p>`}
+  <form class="alerts" method="post" action="/products/${product.id}/alerts">
+    <label>
+      <span>Target price${product.currency ? ` (${escapeHtml(product.currency)})` : ""}</span>
+      <input type="number" name="target" min="0" step="any" inputmode="decimal" placeholder="e.g. 300000" value="${product.target_price ?? suggested ?? ""}">
+    </label>
+    <label>
+      <span>Send alerts to</span>
+      <input type="email" name="email" placeholder="Default address" value="${escapeHtml(product.notify_email ?? "")}">
+    </label>
     <button type="submit">Save</button>
   </form>
-  <p class="muted">Empty the field and save to clear the target. You get one email each time the price drops below it.</p>
+  <p class="muted">Empty the target to clear it. Empty the email to use the default address. You get one email each time the price drops below the target. Changing either field starts a new cycle and checks the price now.</p>
 </section>
 <section class="card">
   <h2>Price timeline</h2>
@@ -101,8 +110,13 @@ function layout(notice: string | null, body: string): string {
   h2 { font-size: 1.05rem; margin: 0 0 8px; }
   .muted { color: var(--muted); font-size: 0.9rem; }
   .notice { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
-  .add, .target { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
-  .add input, .target input { flex: 1; min-width: 0; padding: 8px; font: inherit; }
+  .add { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
+  .add input { flex: 1; min-width: 0; padding: 8px; font: inherit; }
+  .alerts { display: grid; gap: 12px; margin: 12px 0; }
+  .alerts label { display: grid; gap: 4px; }
+  .alerts label span { font-size: 0.9rem; color: var(--muted); }
+  .alerts input { padding: 8px; font: inherit; }
+  .alerts button { justify-self: start; }
   button { font: inherit; padding: 8px 14px; cursor: pointer; }
   .product, .card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
   .product header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
@@ -149,11 +163,22 @@ function renderCard(product: ProductView): string {
 `;
 }
 
-function renderEvent(row: HistoryView, previous: HistoryView | undefined): string {
+function renderEvent(
+  row: HistoryView,
+  previous: HistoryView | undefined,
+): string {
   const change = previous
     ? formatChange(row.price, previous.price, row.currency)
     : '<span class="muted">First price recorded</span>';
   return `<li><div class="muted">${formatDate(row.checked_at)}</div><div class="price">${formatPrice(row.price, row.currency)}</div><div>${change}</div></li>`;
+}
+
+// Share of the current price to suggest as a target when none is set. The suggestion is only shown in the form.
+const SUGGESTED_DROP = 0.15;
+
+function suggestedTarget(product: ProductView): number | null {
+  if (product.target_price !== null || product.last_price === null) return null;
+  return Math.round(product.last_price * (1 - SUGGESTED_DROP) * 100) / 100;
 }
 
 function targetStatusText(product: ProductView): string {
@@ -195,10 +220,16 @@ function errorText(product: ProductView): string {
 }
 
 function money(amount: number, currency: string | null): string {
-  return currency ? formatPrice(amount, currency) : amount.toLocaleString("en-US");
+  return currency
+    ? formatPrice(amount, currency)
+    : amount.toLocaleString("en-US");
 }
 
-function formatChange(price: number, previous: number, currency: string): string {
+function formatChange(
+  price: number,
+  previous: number,
+  currency: string,
+): string {
   const diff = price - previous;
   if (diff === 0) return "—";
   const percent = Math.abs((diff / previous) * 100).toFixed(1);

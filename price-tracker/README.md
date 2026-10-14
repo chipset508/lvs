@@ -1,11 +1,11 @@
 # Price Tracker
 
-Checks product links every hour on a Cloudflare Worker (Free plan), keeps a price history in D1, and emails you when a price drops below your target.
+Checks product links every four hours on a Cloudflare Worker (Free plan), keeps a price history in D1, and emails you when a price drops below your target.
 
 - `/` lists tracked products with their current price, target and last check. Add a link with the form, open a product to see it, or remove it.
-- `/products/:id` is the detail page: the price timeline (each change against the previous price), the target price, and the alert status.
-- The cron trigger (`0 * * * *`, UTC) fetches each link and writes a history row only when the price or currency changes.
-- Alerts: when the price is below the target, you get one email. Another email is sent only after the price goes back above the target and drops below it again. Changing the target starts a new cycle and checks the price right away.
+- `/products/:id` is the detail page: the price timeline (each change against the previous price), the target price, the alert email, and the alert status.
+- The cron trigger (`0 */4 * * *`, UTC: 00, 04, 08, 12, 16 and 20 hours) fetches each link and writes a history row only when the price or currency changes.
+- Alerts: when the price is below the target, one email goes to the product's alert email, or to the default address if it has none. Another email is sent only after the price goes back above the target and drops below it again. Changing the target or the alert email starts a new cycle and checks the price right away.
 - The whole site is behind a Basic-auth password (`ADMIN_TOKEN`).
 
 ## Local development
@@ -15,7 +15,7 @@ npm install
 echo 'ADMIN_TOKEN=devtoken' > .dev.vars   # gitignored
 npm run db:migrate:local
 npm run dev                               # http://localhost:8787 (user: anything, password: devtoken)
-curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+*+*+*+*"   # run the hourly check now
+curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=0+*+*+*+*"   # run the scheduled check now
 ```
 
 Without the email settings below, the target still works, but alert emails are skipped and retried on the next check.
@@ -23,7 +23,7 @@ Without the email settings below, the target still works, but alert emails are s
 ## Email alerts with Resend
 
 1. Create a Resend account and an API key with **Sending access**.
-2. Set the three secrets. `RESEND_FROM` is the sender address. `NOTIFY_TO` is the address that receives alerts.
+2. Set the three secrets. `RESEND_FROM` is the sender address. `NOTIFY_TO` is the default address that receives alerts.
 
 ```sh
 npx wrangler secret put RESEND_API_KEY
@@ -32,6 +32,8 @@ npx wrangler secret put NOTIFY_TO
 ```
 
 For local testing, the same values can go in `.dev.vars`. Resend's free plan allows 3,000 emails a month and 100 a day.
+
+Without a verified domain, Resend only delivers to the email address on your Resend account. Other alert addresses get an HTTP 403, which the detail page shows. Verify a domain in Resend to send to any address.
 
 ## Deploy to Cloudflare Free
 
@@ -43,7 +45,7 @@ npx wrangler secret put ADMIN_TOKEN       # the password you will use to open th
 npm run deploy
 ```
 
-Run `npm run db:migrate:remote` on an existing deployment too, because `0002_targets_and_alerts.sql` adds the target and alert columns.
+Run `npm run db:migrate:remote` on an existing deployment too, because `0002_targets_and_alerts.sql` adds the target and alert columns, and `0003_alert_email.sql` adds the per-product alert email.
 
 ## Things to know
 

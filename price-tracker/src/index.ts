@@ -49,7 +49,7 @@ export default {
     }
 
     const productRoute = pathname.match(
-      /^\/products\/(\d+)(\/target|\/delete)?$/,
+      /^\/products\/(\d+)(\/alerts|\/delete)?$/,
     );
     if (productRoute) {
       const id = Number(productRoute[1]);
@@ -57,8 +57,8 @@ export default {
       if (request.method === "GET" && !action) {
         return showDetail(env, id, url.searchParams.get("notice"));
       }
-      if (request.method === "POST" && action === "/target") {
-        return setTarget(request, env, id);
+      if (request.method === "POST" && action === "/alerts") {
+        return setAlerts(request, env, id);
       }
       if (request.method === "POST" && action === "/delete") {
         return removeProduct(env, id);
@@ -130,11 +130,12 @@ async function addProduct(request: Request, env: Env): Promise<Response> {
     last_error: null,
     target_price: null,
     alerted_at: null,
+    notify_email: null,
   };
   const result = await checkProduct(env, product);
   if (!result.ok) {
     return redirectWithNotice(
-      `Saved, but the first check failed: ${sentence(result.error)} It will be retried every hour.`,
+      `Saved, but the first check failed: ${sentence(result.error)} It will be retried at the next scheduled check.`,
     );
   }
   return redirectWithNotice(
@@ -142,7 +143,7 @@ async function addProduct(request: Request, env: Env): Promise<Response> {
   );
 }
 
-async function setTarget(
+async function setAlerts(
   request: Request,
   env: Env,
   id: number,
@@ -153,10 +154,10 @@ async function setTarget(
   }
 
   const form = await request.formData();
-  const raw = String(form.get("target") ?? "").trim();
+  const rawTarget = String(form.get("target") ?? "").trim();
   let target: number | null = null;
-  if (raw !== "") {
-    target = Number(raw);
+  if (rawTarget !== "") {
+    target = Number(rawTarget);
     if (!Number.isFinite(target) || target <= 0) {
       return redirectWithNotice(
         "Enter a target price above 0, or leave it empty to clear the target.",
@@ -165,35 +166,65 @@ async function setTarget(
     }
   }
 
-  await env.DB.prepare(
-    "UPDATE products SET target_price = ?, alerted_at = NULL WHERE id = ?",
-  )
-    .bind(target, id)
-    .run();
-  if (target === null) {
-    return redirectWithNotice("Target cleared.", `/products/${id}`);
+  const rawEmail = String(form.get("email") ?? "").trim();
+  if (rawEmail !== "" && !isValidEmail(rawEmail)) {
+    return redirectWithNotice(
+      "Enter a valid email address, or leave it empty to use the default address.",
+      `/products/${id}`,
+    );
+  }
+  const email = rawEmail === "" ? null : rawEmail;
+
+  // Nothing changed, so the alert cycle and the price check stay as they are.
+  const changed =
+    target !== product.target_price || email !== product.notify_email;
+  if (!changed) {
+    return redirectWithNotice("Alert settings unchanged.", `/products/${id}`);
   }
 
-  // A new target starts a fresh alert cycle, so the current price is checked against it right away.
+  await env.DB.prepare(
+    "UPDATE products SET target_price = ?, notify_email = ?, alerted_at = NULL WHERE id = ?",
+  )
+    .bind(target, email, id)
+    .run();
+  if (target === null) {
+    return redirectWithNotice(
+      "Alert settings saved. No target is set.",
+      `/products/${id}`,
+    );
+  }
+
+  // A new target or address starts a fresh alert cycle, so the current price is checked right away.
   const result = await checkProduct(env, {
     ...product,
     target_price: target,
+    notify_email: email,
     alerted_at: null,
   });
-  return redirectWithNotice(targetNotice(result), `/products/${id}`);
+  return redirectWithNotice(alertNotice(env, result, email), `/products/${id}`);
 }
 
-function targetNotice(result: CheckResult): string {
+function alertNotice(
+  env: Env,
+  result: CheckResult,
+  email: string | null,
+): string {
   if (!result.ok) {
-    return `Target saved, but the price check failed: ${sentence(result.error)}`;
+    return `Saved, but the price check failed: ${sentence(result.error)}`;
   }
   if (result.alert.status === "sent") {
-    return "Target saved. The price is already below it, so an alert email was sent.";
+    const to = email ?? env.NOTIFY_TO ?? "the default address";
+    return `Saved. The price is already below the target, so an alert email was sent to ${to}.`;
   }
   if (result.alert.status === "failed") {
-    return `Target saved, but the alert email failed: ${sentence(result.alert.error)} It will be retried on the next check.`;
+    return `Saved, but the alert email failed: ${sentence(result.alert.error)} It will be retried on the next check.`;
   }
-  return `Target saved. Current price: ${formatPrice(result.price, result.currency)}.`;
+  return `Saved. Current price: ${formatPrice(result.price, result.currency)}.`;
+}
+
+// Checks the shape only. Resend decides whether the address can receive mail.
+function isValidEmail(value: string): boolean {
+  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 // Ends a message with exactly one period, whether or not the error text already has one.
@@ -298,6 +329,7 @@ async function evaluateAlert(
       price,
       currency,
       target: product.target_price,
+      recipient: product.notify_email,
     });
     return { alert: { status: "sent" }, alertedAt: now };
   } catch (err) {

@@ -6,7 +6,7 @@ export interface AlertConfig {
   RESEND_API_KEY?: string;
   // Sender address. onboarding@resend.dev works without a domain, if Resend allows it for your account.
   RESEND_FROM?: string;
-  // Address that receives the alerts.
+  // Default address for alerts. A product can set its own address instead.
   NOTIFY_TO?: string;
 }
 
@@ -16,6 +16,8 @@ export interface PriceAlert {
   price: number;
   currency: string;
   target: number;
+  // The product's own address, or null to use NOTIFY_TO.
+  recipient: string | null;
 }
 
 const RESEND_URL = "https://api.resend.com/emails";
@@ -26,7 +28,7 @@ export async function sendPriceAlert(
 ): Promise<void> {
   const apiKey = config.RESEND_API_KEY;
   const from = config.RESEND_FROM;
-  const to = config.NOTIFY_TO;
+  const to = alert.recipient || config.NOTIFY_TO;
   if (!apiKey || !from || !to) {
     throw new Error(
       "Email is not configured: set RESEND_API_KEY, RESEND_FROM and NOTIFY_TO",
