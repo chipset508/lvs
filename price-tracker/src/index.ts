@@ -1,9 +1,12 @@
 import { fetchPrice } from "./extract";
 import { sendPriceAlert, type AlertConfig } from "./notify";
 import {
+  PER_PRODUCT_ALERT_EMAIL,
+  SUGGESTED_DROP,
   formatPrice,
   renderDetail,
   renderList,
+  suggestedTargetPrice,
   type HistoryView,
   type ProductView,
 } from "./render";
@@ -26,6 +29,8 @@ type CheckResult =
       price: number;
       currency: string;
       alert: AlertOutcome;
+      // Target saved automatically from the first price, or null.
+      setTarget: number | null;
     }
   | { ok: false; error: string };
 
@@ -100,6 +105,7 @@ async function showDetail(
 async function addProduct(request: Request, env: Env): Promise<Response> {
   const form = await request.formData();
   const raw = String(form.get("url") ?? "").trim();
+  const rawEmail = String(form.get("email") ?? "").trim();
 
   let link: URL;
   try {
@@ -110,11 +116,17 @@ async function addProduct(request: Request, env: Env): Promise<Response> {
   if (link.protocol !== "http:" && link.protocol !== "https:") {
     return redirectWithNotice("Only http and https links can be tracked.");
   }
+  if (PER_PRODUCT_ALERT_EMAIL && rawEmail !== "" && !isValidEmail(rawEmail)) {
+    return redirectWithNotice(
+      "Enter a valid alert email, or leave it empty to use the default address.",
+    );
+  }
+  const email = PER_PRODUCT_ALERT_EMAIL && rawEmail !== "" ? rawEmail : null;
 
   const inserted = await env.DB.prepare(
-    "INSERT INTO products (url) VALUES (?) ON CONFLICT (url) DO NOTHING RETURNING id",
+    "INSERT INTO products (url, notify_email) VALUES (?, ?) ON CONFLICT (url) DO NOTHING RETURNING id",
   )
-    .bind(link.href)
+    .bind(link.href, email)
     .first<{ id: number }>();
   if (!inserted) {
     return redirectWithNotice("That link is already tracked.");
@@ -130,7 +142,8 @@ async function addProduct(request: Request, env: Env): Promise<Response> {
     last_error: null,
     target_price: null,
     alerted_at: null,
-    notify_email: null,
+    notify_email: email,
+    image_url: null,
   };
   const result = await checkProduct(env, product);
   if (!result.ok) {
@@ -138,8 +151,14 @@ async function addProduct(request: Request, env: Env): Promise<Response> {
       `Saved, but the first check failed: ${sentence(result.error)} It will be retried at the next scheduled check.`,
     );
   }
+  const name = result.name ?? link.href;
+  const price = formatPrice(result.price, result.currency);
+  if (result.setTarget === null) {
+    return redirectWithNotice(`Now tracking ${name}: ${price}`);
+  }
+  const target = formatPrice(result.setTarget, result.currency);
   return redirectWithNotice(
-    `Now tracking ${result.name ?? link.href}: ${formatPrice(result.price, result.currency)}`,
+    `Now tracking ${name}: ${price}. Target set to ${target}, ${Math.round(SUGGESTED_DROP * 100)}% below the price.`,
   );
 }
 
@@ -167,13 +186,18 @@ async function setAlerts(
   }
 
   const rawEmail = String(form.get("email") ?? "").trim();
-  if (rawEmail !== "" && !isValidEmail(rawEmail)) {
+  if (PER_PRODUCT_ALERT_EMAIL && rawEmail !== "" && !isValidEmail(rawEmail)) {
     return redirectWithNotice(
       "Enter a valid email address, or leave it empty to use the default address.",
       `/products/${id}`,
     );
   }
-  const email = rawEmail === "" ? null : rawEmail;
+  // While per-product addresses are hidden, the stored address is left unchanged.
+  const email = PER_PRODUCT_ALERT_EMAIL
+    ? rawEmail === ""
+      ? null
+      : rawEmail
+    : product.notify_email;
 
   // Nothing changed, so the alert cycle and the price check stay as they are.
   const changed =
@@ -213,7 +237,10 @@ function alertNotice(
     return `Saved, but the price check failed: ${sentence(result.error)}`;
   }
   if (result.alert.status === "sent") {
-    const to = email ?? env.NOTIFY_TO ?? "the default address";
+    const to =
+      (PER_PRODUCT_ALERT_EMAIL ? email : null) ??
+      env.NOTIFY_TO ??
+      "the default address";
     return `Saved. The price is already below the target, so an alert email was sent to ${to}.`;
   }
   if (result.alert.status === "failed") {
@@ -258,12 +285,21 @@ async function checkProduct(
   const now = new Date().toISOString();
 
   try {
-    const { name, price, currency } = await fetchPrice(product.url);
+    const { name, price, currency, image } = await fetchPrice(product.url);
     const changed =
       product.last_price !== price || product.currency !== currency;
+    // The first price sets the target, below it, unless a target is already set.
+    const setTarget =
+      product.last_price === null && product.target_price === null
+        ? suggestedTargetPrice(price)
+        : null;
     const { alert, alertedAt } = await evaluateAlert(
       env,
-      { ...product, name: name ?? product.name },
+      {
+        ...product,
+        name: name ?? product.name,
+        target_price: product.target_price ?? setTarget,
+      },
       price,
       currency,
       now,
@@ -271,8 +307,17 @@ async function checkProduct(
 
     const statements = [
       env.DB.prepare(
-        "UPDATE products SET name = COALESCE(?, name), currency = ?, last_price = ?, last_checked_at = ?, last_error = NULL, alerted_at = ? WHERE id = ?",
-      ).bind(name, currency, price, now, alertedAt, product.id),
+        "UPDATE products SET name = COALESCE(?, name), image_url = COALESCE(?, image_url), target_price = COALESCE(target_price, ?), currency = ?, last_price = ?, last_checked_at = ?, last_error = NULL, alerted_at = ? WHERE id = ?",
+      ).bind(
+        name,
+        image,
+        setTarget,
+        currency,
+        price,
+        now,
+        alertedAt,
+        product.id,
+      ),
     ];
     if (changed) {
       statements.push(
@@ -292,7 +337,7 @@ async function checkProduct(
         alert: alert.status,
       }),
     );
-    return { ok: true, name, price, currency, alert };
+    return { ok: true, name, price, currency, alert, setTarget };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     await env.DB.prepare(
@@ -329,7 +374,7 @@ async function evaluateAlert(
       price,
       currency,
       target: product.target_price,
-      recipient: product.notify_email,
+      recipient: PER_PRODUCT_ALERT_EMAIL ? product.notify_email : null,
     });
     return { alert: { status: "sent" }, alertedAt: now };
   } catch (err) {

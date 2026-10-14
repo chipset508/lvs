@@ -2,10 +2,10 @@
 
 Checks product links every four hours on a Cloudflare Worker (Free plan), keeps a price history in D1, and emails you when a price drops below your target.
 
-- `/` lists tracked products with their current price, target and last check. Add a link with the form, open a product to see it, or remove it.
-- `/products/:id` is the detail page: the price timeline (each change against the previous price), the target price, the alert email, and the alert status.
+- `/` lists tracked products with their current price, target, picture and last check. Add a link with the form, open a product to see it, or remove it. The first price check also saves a target 15% below that price.
+- `/products/:id` is the detail page: the price timeline (each change against the previous price), the target price, and the alert status.
 - The cron trigger (`0 */4 * * *`, UTC: 00, 04, 08, 12, 16 and 20 hours) fetches each link and writes a history row only when the price or currency changes.
-- Alerts: when the price is below the target, one email goes to the product's alert email, or to the default address if it has none. Another email is sent only after the price goes back above the target and drops below it again. Changing the target or the alert email starts a new cycle and checks the price right away.
+- Alerts: when the price is below the target, one email goes to the default address (`NOTIFY_TO`). Another email is sent only after the price goes back above the target and drops below it again. Changing the target starts a new cycle and checks the price right away. Per-product alert addresses are hidden (`PER_PRODUCT_ALERT_EMAIL` in `src/render.ts`) until a domain is verified in Resend.
 - The whole site is behind a Basic-auth password (`ADMIN_TOKEN`).
 
 ## Local development
@@ -45,7 +45,7 @@ npx wrangler secret put ADMIN_TOKEN       # the password you will use to open th
 npm run deploy
 ```
 
-Run `npm run db:migrate:remote` on an existing deployment too, because `0002_targets_and_alerts.sql` adds the target and alert columns, and `0003_alert_email.sql` adds the per-product alert email.
+Run `npm run db:migrate:remote` on an existing deployment too, because `0002_targets_and_alerts.sql` adds the target and alert columns, `0003_alert_email.sql` adds the per-product alert email, and `0004_product_image.sql` adds the picture URL.
 
 ## Things to know
 

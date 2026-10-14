@@ -3,6 +3,10 @@
 // Times are shown in this timezone; the tracker is for personal use in Vietnam.
 const DISPLAY_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
+// Per-product alert addresses are hidden until a domain is verified in Resend. Until then Resend
+// only delivers to the account's own address, so every alert goes to the default address.
+export const PER_PRODUCT_ALERT_EMAIL = false;
+
 export interface ProductView {
   id: number;
   url: string;
@@ -14,6 +18,7 @@ export interface ProductView {
   target_price: number | null;
   alerted_at: string | null;
   notify_email: string | null;
+  image_url: string | null;
 }
 
 export interface HistoryView {
@@ -35,6 +40,7 @@ export function renderList(
     notice,
     `<form class="add" method="post" action="/products">
   <input type="url" name="url" placeholder="Paste a product link" required>
+  ${PER_PRODUCT_ALERT_EMAIL ? '<input type="email" name="email" placeholder="Alert email (optional)">' : ""}
   <button type="submit">Track</button>
 </form>
 ${cards}`,
@@ -46,7 +52,6 @@ export function renderDetail(
   product: ProductView,
   history: HistoryView[],
 ): string {
-  const suggested = suggestedTarget(product);
   // History is stored oldest-first. Each event is compared with the one before it,
   // then the list is reversed so the newest event is on top.
   const timeline =
@@ -62,6 +67,7 @@ export function renderDetail(
     `<p class="back"><a href="/">← All products</a></p>
 <h1>${escapeHtml(productTitle(product))}</h1>
 <section class="card">
+  ${productImage(product, "hero")}
   <div class="price">${priceText(product)}</div>
   <div class="muted">${checkedText(product)}${errorText(product)}</div>
   <p><a href="${escapeHtml(product.url)}" target="_blank" rel="noopener">Open product page ↗</a></p>
@@ -69,19 +75,22 @@ export function renderDetail(
 <section class="card">
   <h2>Alerts</h2>
   <p>${targetStatusText(product)}</p>
-  ${suggested === null ? "" : `<p class="muted">The target field is pre-filled with a suggestion, 15% below the current price. Save to use it.</p>`}
   <form class="alerts" method="post" action="/products/${product.id}/alerts">
     <label>
       <span>Target price${product.currency ? ` (${escapeHtml(product.currency)})` : ""}</span>
-      <input type="number" name="target" min="0" step="any" inputmode="decimal" placeholder="e.g. 300000" value="${product.target_price ?? suggested ?? ""}">
+      <input type="number" name="target" min="0" step="any" inputmode="decimal" placeholder="e.g. 300000" value="${product.target_price ?? ""}">
     </label>
-    <label>
+    ${
+      PER_PRODUCT_ALERT_EMAIL
+        ? `<label>
       <span>Send alerts to</span>
       <input type="email" name="email" placeholder="Default address" value="${escapeHtml(product.notify_email ?? "")}">
-    </label>
+    </label>`
+        : ""
+    }
     <button type="submit">Save</button>
   </form>
-  <p class="muted">Empty the target to clear it. Empty the email to use the default address. You get one email each time the price drops below the target. Changing either field starts a new cycle and checks the price now.</p>
+  <p class="muted">Empty the target to clear it. You get one email each time the price drops below the target. Changing the target starts a new cycle and checks the price now.</p>
 </section>
 <section class="card">
   <h2>Price timeline</h2>
@@ -110,8 +119,9 @@ function layout(notice: string | null, body: string): string {
   h2 { font-size: 1.05rem; margin: 0 0 8px; }
   .muted { color: var(--muted); font-size: 0.9rem; }
   .notice { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
-  .add { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
-  .add input { flex: 1; min-width: 0; padding: 8px; font: inherit; }
+  .add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  .add input { flex: 1 1 200px; min-width: 0; padding: 8px; font: inherit; }
+  .add input[type="url"] { flex-basis: 100%; }
   .alerts { display: grid; gap: 12px; margin: 12px 0; }
   .alerts label { display: grid; gap: 4px; }
   .alerts label span { font-size: 0.9rem; color: var(--muted); }
@@ -120,6 +130,9 @@ function layout(notice: string | null, body: string): string {
   button { font: inherit; padding: 8px 14px; cursor: pointer; }
   .product, .card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
   .product header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .product header > div { flex: 1; min-width: 0; }
+  .thumb { flex: none; width: 72px; height: 72px; object-fit: contain; border: 1px solid var(--border); border-radius: 8px; }
+  .hero { display: block; width: 100%; max-width: 240px; height: auto; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px; }
   .product a { font-weight: 600; color: inherit; overflow-wrap: anywhere; }
   .price { font-size: 1.3rem; font-weight: 700; margin: 2px 0; }
   .error, .up { color: var(--up); }
@@ -149,6 +162,7 @@ function renderCard(product: ProductView): string {
 
   return `<section class="product">
   <header>
+    ${productImage(product, "thumb")}
     <div>
       <a href="/products/${product.id}">${escapeHtml(productTitle(product))}</a>
       <div class="price">${priceText(product)}</div>
@@ -173,12 +187,11 @@ function renderEvent(
   return `<li><div class="muted">${formatDate(row.checked_at)}</div><div class="price">${formatPrice(row.price, row.currency)}</div><div>${change}</div></li>`;
 }
 
-// Share of the current price to suggest as a target when none is set. The suggestion is only shown in the form.
-const SUGGESTED_DROP = 0.15;
+// The first price becomes the target, this far below it, unless a target is already set.
+export const SUGGESTED_DROP = 0.15;
 
-function suggestedTarget(product: ProductView): number | null {
-  if (product.target_price !== null || product.last_price === null) return null;
-  return Math.round(product.last_price * (1 - SUGGESTED_DROP) * 100) / 100;
+export function suggestedTargetPrice(price: number): number {
+  return Math.round(price * (1 - SUGGESTED_DROP) * 100) / 100;
 }
 
 function targetStatusText(product: ProductView): string {
@@ -199,6 +212,12 @@ function targetStatusText(product: ProductView): string {
 
 function productTitle(product: ProductView): string {
   return product.name ?? product.url;
+}
+
+// image_url is stored only as an http or https URL (see resolveImage in extract.ts).
+function productImage(product: ProductView, className: string): string {
+  if (!product.image_url) return "";
+  return `<img class="${className}" src="${escapeHtml(product.image_url)}" alt="${escapeHtml(productTitle(product))}" loading="lazy" referrerpolicy="no-referrer">`;
 }
 
 function priceText(product: ProductView): string {

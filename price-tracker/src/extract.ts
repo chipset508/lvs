@@ -6,6 +6,7 @@ export interface PriceInfo {
   name: string | null;
   price: number;
   currency: string;
+  image: string | null;
 }
 
 const USER_AGENT =
@@ -35,10 +36,17 @@ export function parsePriceFromHtml(
   html: string,
   url: string,
 ): PriceInfo | null {
-  return fromJsonLd(html) ?? fromNextData(html, url) ?? fromMeta(html);
+  const info =
+    fromJsonLd(html, url) ?? fromNextData(html, url) ?? fromMeta(html);
+  if (!info) return null;
+  // The page's og:image is the fallback when the price source has no image.
+  return {
+    ...info,
+    image: info.image ?? resolveImage(metaContent(html, "og:image"), url),
+  };
 }
 
-function fromJsonLd(html: string): PriceInfo | null {
+function fromJsonLd(html: string, pageUrl: string): PriceInfo | null {
   for (const match of html.matchAll(
     /<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
   )) {
@@ -59,7 +67,12 @@ function fromJsonLd(html: string): PriceInfo | null {
           offer.priceCurrency,
           node.name,
         );
-      if (info) return info;
+      if (info) {
+        return {
+          ...info,
+          image: resolveImage(imageValue(node.image), pageUrl),
+        };
+      }
     }
   }
   return null;
@@ -111,7 +124,7 @@ function metaContent(html: string, key: string): string | null {
       continue;
     const match = tag.match(/content="([^"]*)"|content='([^']*)'/i);
     const content = match?.[1] ?? match?.[2];
-    if (content) return content;
+    if (content) return decodeEntities(content);
   }
   return null;
 }
@@ -128,7 +141,52 @@ function toPriceInfo(
 
   const name =
     typeof rawName === "string" && rawName.trim() ? rawName.trim() : null;
-  return { name, price, currency: rawCurrency };
+  return { name, price, currency: rawCurrency, image: null };
+}
+
+// schema.org allows image to be a URL, an ImageObject, or a list of either.
+function imageValue(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const url = imageValue(item);
+      if (url) return url;
+    }
+    return null;
+  }
+  if (isRecord(value)) {
+    return imageValue(value.url) ?? imageValue(value.contentUrl);
+  }
+  return null;
+}
+
+// Only http and https images are kept, so the page can show them in an <img> tag.
+function resolveImage(raw: string | null, pageUrl: string): string | null {
+  if (!raw?.trim()) return null;
+  try {
+    const url = new URL(raw.trim(), pageUrl);
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+const ENTITIES: Record<string, string> = {
+  amp: "&",
+  quot: '"',
+  "#39": "'",
+  lt: "<",
+  gt: ">",
+};
+
+// Meta content is HTML, so entities such as &amp; in an image URL need decoding.
+function decodeEntities(text: string): string {
+  return text.replace(
+    /&(amp|quot|#39|lt|gt);/g,
+    (_, name: string) => ENTITIES[name],
+  );
 }
 
 function isProduct(type: unknown): boolean {
